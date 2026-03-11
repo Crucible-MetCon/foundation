@@ -17,6 +17,7 @@ COPY package.json pnpm-workspace.yaml pnpm-lock.yaml ./
 COPY apps/web/package.json ./apps/web/
 COPY packages/db/package.json ./packages/db/
 COPY packages/domain/package.json ./packages/domain/
+COPY packages/integrations/package.json ./packages/integrations/
 COPY packages/validators/package.json ./packages/validators/
 
 RUN pnpm install --frozen-lockfile
@@ -29,6 +30,7 @@ COPY --from=deps /app/node_modules ./node_modules
 COPY --from=deps /app/apps/web/node_modules ./apps/web/node_modules
 COPY --from=deps /app/packages/db/node_modules ./packages/db/node_modules
 COPY --from=deps /app/packages/domain/node_modules ./packages/domain/node_modules
+COPY --from=deps /app/packages/integrations/node_modules ./packages/integrations/node_modules
 COPY --from=deps /app/packages/validators/node_modules ./packages/validators/node_modules
 
 # Copy source

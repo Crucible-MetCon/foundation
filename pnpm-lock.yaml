@@ -23,6 +23,9 @@ importers:
       '@foundation/domain':
         specifier: workspace:*
         version: link:../../packages/domain
+      '@foundation/integrations':
+        specifier: workspace:*
+        version: link:../../packages/integrations
       '@foundation/validators':
         specifier: workspace:*
         version: link:../../packages/validators
@@ -127,6 +130,12 @@ importers:
       vitest:
         specifier: ^3.0.0
         version: 3.2.4(@types/node@22.19.15)(jiti@2.6.1)(lightningcss@1.31.1)(tsx@4.21.0)
+
+  packages/integrations:
+    devDependencies:
+      typescript:
+        specifier: ^5.7.0
+        version: 5.9.3
 
   packages/validators:
     dependencies:

@@ -10,6 +10,7 @@ const nextConfig: NextConfig = {
   transpilePackages: [
     "@foundation/db",
     "@foundation/domain",
+    "@foundation/integrations",
     "@foundation/validators",
   ],
 };

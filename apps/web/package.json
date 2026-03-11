@@ -12,6 +12,7 @@
   "dependencies": {
     "@foundation/db": "workspace:*",
     "@foundation/domain": "workspace:*",
+    "@foundation/integrations": "workspace:*",
     "@foundation/validators": "workspace:*",
     "@lucia-auth/adapter-drizzle": "^1.1.0",
     "@node-rs/argon2": "^2.0.2",
