@@ -1,0 +1,26 @@
+{
+  "name": "foundation",
+  "private": true,
+  "scripts": {
+    "dev": "turbo dev",
+    "build": "turbo build",
+    "lint": "turbo lint",
+    "type-check": "turbo type-check",
+    "test": "turbo test",
+    "db:generate": "pnpm --filter @foundation/db generate",
+    "db:migrate": "pnpm --filter @foundation/db migrate",
+    "db:push": "pnpm --filter @foundation/db push",
+    "db:seed": "pnpm --filter @foundation/db seed"
+  },
+  "devDependencies": {
+    "turbo": "^2.5.0",
+    "typescript": "^5.7.0"
+  },
+  "packageManager": "pnpm@10.30.2",
+  "engines": {
+    "node": ">=20"
+  },
+  "pnpm": {
+    "onlyBuiltDependencies": ["esbuild", "sharp", "@node-rs/argon2"]
+  }
+}
