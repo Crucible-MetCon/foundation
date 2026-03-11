@@ -1,5 +1,8 @@
 FROM node:22-alpine AS base
 
+# Native module support on Alpine (needed for @node-rs/argon2, postgres)
+RUN apk add --no-cache libc6-compat
+
 # Install pnpm
 RUN corepack enable && corepack prepare pnpm@10.30.2 --activate
 
@@ -45,10 +48,17 @@ ENV NEXT_TELEMETRY_DISABLED=1
 RUN addgroup --system --gid 1001 nodejs
 RUN adduser --system --uid 1001 nextjs
 
-# Copy built output
+# Copy standalone server (handles routing, serving, and minimal bundled code)
 COPY --from=builder /app/apps/web/public ./apps/web/public
 COPY --from=builder --chown=nextjs:nodejs /app/apps/web/.next/standalone ./
 COPY --from=builder --chown=nextjs:nodejs /app/apps/web/.next/static ./apps/web/.next/static
+
+# Copy full dependency tree — the standalone file tracer misses workspace
+# package deps (drizzle-orm, postgres, lucia) due to pnpm symlink resolution.
+# This ensures all server-side packages are available at runtime.
+COPY --from=deps /app/node_modules ./node_modules
+COPY --from=deps /app/apps/web/node_modules ./apps/web/node_modules
+COPY --from=deps /app/packages/db/node_modules ./packages/db/node_modules
 
 USER nextjs
 
