@@ -1,6 +1,6 @@
 [build]
+builder = "DOCKERFILE"
 dockerfilePath = "apps/web/Dockerfile"
-# No buildCommand — the Dockerfile handles everything
 
 [deploy]
 # No startCommand — use the Dockerfile CMD (node apps/web/server.js)
