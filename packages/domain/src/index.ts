@@ -52,3 +52,14 @@ export type {
   ForwardSummary,
   ForwardExposureResult,
 } from "./forward-exposure";
+
+export { buildTradingTicket } from "./ticket";
+
+export type {
+  TicketTmInput,
+  TicketPmxInput,
+  TicketTmRow,
+  TicketStonexRow,
+  TicketSummary,
+  TicketResult,
+} from "./ticket";
