@@ -48,6 +48,12 @@ export interface LedgerRow {
   balanceZar: number;
   netXauOz: number;
   netXauGrams: number;
+  netXagOz: number;
+  netXagGrams: number;
+  netXptOz: number;
+  netXptGrams: number;
+  netXpdOz: number;
+  netXpdGrams: number;
   traderName: string;
   status: "Open" | "Closed";
 }
@@ -94,6 +100,9 @@ export function buildLedger(trades: RawTradeRow[]): LedgerRow[] {
   let runningUsd = 0;
   let runningZar = 0;
   let runningXau = 0;
+  let runningXag = 0;
+  let runningXpt = 0;
+  let runningXpd = 0;
 
   const rows: LedgerRow[] = sorted.map((t) => {
     const { base, quote } = splitSymbol(t.symbol);
@@ -105,15 +114,15 @@ export function buildLedger(trades: RawTradeRow[]): LedgerRow[] {
 
     let debitUsd = 0, creditUsd = 0;
     let debitZar = 0, creditZar = 0;
-    let creditXau = 0, debitXau = 0;
+    let creditMetal = 0, debitMetal = 0;
 
     if (isMetal) {
       if (isBuy) {
         debitUsd = qty * px;
-        creditXau = qty;
+        creditMetal = qty;
       } else {
         creditUsd = qty * px;
-        debitXau = qty;
+        debitMetal = qty;
       }
     } else if (isFx) {
       if (t.side.toUpperCase() === "SELL") {
@@ -128,12 +137,17 @@ export function buildLedger(trades: RawTradeRow[]): LedgerRow[] {
     // Net differences
     const netUsd = creditUsd - debitUsd;
     const netZar = creditZar - debitZar;
-    const netXau = creditXau - debitXau;
+    const netMetal = creditMetal - debitMetal;
 
     // Accumulate into global running balance
     runningUsd += netUsd;
     runningZar += netZar;
-    runningXau += netXau;
+
+    // Route metal to the correct per-metal accumulator
+    if (base === "XAU") runningXau += netMetal;
+    else if (base === "XAG") runningXag += netMetal;
+    else if (base === "XPT") runningXpt += netMetal;
+    else if (base === "XPD") runningXpd += netMetal;
 
     // Auto-generate narration if empty
     let narration = t.narration?.trim() || "";
@@ -168,6 +182,12 @@ export function buildLedger(trades: RawTradeRow[]): LedgerRow[] {
       balanceZar: runningZar,
       netXauOz: runningXau,
       netXauGrams: runningXau * GRAMS_PER_TROY_OUNCE,
+      netXagOz: runningXag,
+      netXagGrams: runningXag * GRAMS_PER_TROY_OUNCE,
+      netXptOz: runningXpt,
+      netXptGrams: runningXpt * GRAMS_PER_TROY_OUNCE,
+      netXpdOz: runningXpd,
+      netXpdGrams: runningXpd * GRAMS_PER_TROY_OUNCE,
       traderName: t.traderName?.trim() || "",
       status: "Open", // Will be set after all rows are processed
     };

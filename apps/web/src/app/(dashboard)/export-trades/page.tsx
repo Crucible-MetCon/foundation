@@ -26,6 +26,12 @@ interface LedgerRow {
   balanceZar: number;
   netXauOz: number;
   netXauGrams: number;
+  netXagOz: number;
+  netXagGrams: number;
+  netXptOz: number;
+  netXptGrams: number;
+  netXpdOz: number;
+  netXpdGrams: number;
   traderName: string;
   status: "Open" | "Closed";
 }
@@ -101,6 +107,14 @@ function flattenLedgerRow(row: LedgerRow) {
     "Debit ZAR": row.debitZar,
     "Credit ZAR": row.creditZar,
     "Balance ZAR": row.balanceZar,
+    "Net Au OZ": row.netXauOz,
+    "Net Au G": row.netXauGrams,
+    "Net Ag OZ": row.netXagOz,
+    "Net Ag G": row.netXagGrams,
+    "Net Pt OZ": row.netXptOz,
+    "Net Pt G": row.netXptGrams,
+    "Net Pd OZ": row.netXpdOz,
+    "Net Pd G": row.netXpdGrams,
     Status: row.status,
   };
 }
@@ -247,8 +261,11 @@ export default function ExportTradesPage() {
                 className="w-full rounded-lg border border-[var(--color-border)] bg-[var(--color-surface)] px-3 py-1.5 text-sm outline-none focus:border-[var(--color-primary)]"
               >
                 <option value="All">All Symbols</option>
-                <option value="XAUUSD">XAUUSD</option>
-                <option value="USDZAR">USDZAR</option>
+                <option value="XAUUSD">XAU/USD</option>
+                <option value="USDZAR">USD/ZAR</option>
+                <option value="XAGUSD">XAG/USD</option>
+                <option value="XPTUSD">XPT/USD</option>
+                <option value="XPDUSD">XPD/USD</option>
               </select>
             </div>
             <div className="grid grid-cols-2 gap-3">

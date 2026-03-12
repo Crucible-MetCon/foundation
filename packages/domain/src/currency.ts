@@ -5,7 +5,7 @@ export type CurrencyCode = "USD" | "ZAR" | "XAU" | "XAG" | "XPT" | "XPD";
 export type TradeSide = "BUY" | "SELL";
 
 /** Supported trading symbols */
-export type TradingSymbol = "XAUUSD" | "USDZAR" | "XAGUSD";
+export type TradingSymbol = "XAUUSD" | "USDZAR" | "XAGUSD" | "XPTUSD" | "XPDUSD";
 
 /** Grams per troy ounce */
 export const GRAMS_PER_TROY_OUNCE = 31.1035;
@@ -18,6 +18,8 @@ export const SYMBOL_PAIRS: Record<
   XAUUSD: { base: "XAU", quote: "USD" },
   USDZAR: { base: "USD", quote: "ZAR" },
   XAGUSD: { base: "XAG", quote: "USD" },
+  XPTUSD: { base: "XPT", quote: "USD" },
+  XPDUSD: { base: "XPD", quote: "USD" },
 };
 
 /**

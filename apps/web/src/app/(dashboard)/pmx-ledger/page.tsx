@@ -28,6 +28,12 @@ interface LedgerRow {
   balanceZar: number;
   netXauOz: number;
   netXauGrams: number;
+  netXagOz: number;
+  netXagGrams: number;
+  netXptOz: number;
+  netXptGrams: number;
+  netXpdOz: number;
+  netXpdGrams: number;
   traderName: string;
   status: "Open" | "Closed";
 }
@@ -181,6 +187,7 @@ function StatCard({
 // ── Page Component ──
 export default function PmxLedgerPage() {
   const queryClient = useQueryClient();
+  const [metalUnit, setMetalUnit] = useState<"oz" | "g">("oz");
   const [filters, setFilters] = useState<Filters>({
     symbol: "All",
     tradeNum: "",
@@ -357,34 +364,32 @@ export default function PmxLedgerPage() {
           );
         },
       },
-      {
-        accessorKey: "netXauOz",
-        header: "Net Au OZ",
-        size: 100,
-        cell: ({ getValue }) => {
-          const val = getValue() as number;
-          if (Math.abs(val) < 0.0001) return <span className="num-neutral">-</span>;
-          return (
-            <span className={`font-semibold ${val > 0 ? "num-positive" : "num-negative"}`}>
-              {val.toLocaleString("en-US", { minimumFractionDigits: 3, maximumFractionDigits: 3 })}
-            </span>
-          );
-        },
-      },
-      {
-        accessorKey: "netXauGrams",
-        header: "Net Au G",
-        size: 100,
-        cell: ({ getValue }) => {
-          const val = getValue() as number;
-          if (Math.abs(val) < 0.01) return <span className="num-neutral">-</span>;
-          return (
-            <span className={`font-semibold ${val > 0 ? "num-positive" : "num-negative"}`}>
-              {val.toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
-            </span>
-          );
-        },
-      },
+      // Per-metal running balance columns (unit toggleable via metalUnit state)
+      ...[
+        { base: "Xau", label: "Au" },
+        { base: "Xag", label: "Ag" },
+        { base: "Xpt", label: "Pt" },
+        { base: "Xpd", label: "Pd" },
+      ].map(({ base, label }) => {
+        const isOz = metalUnit === "oz";
+        const key = isOz ? `net${base}Oz` : `net${base}Grams`;
+        const decimals = isOz ? 3 : 2;
+        const threshold = isOz ? 0.0001 : 0.01;
+        return {
+          accessorKey: key,
+          header: `Net ${label} ${isOz ? "OZ" : "G"}`,
+          size: 90,
+          cell: ({ getValue }: { getValue: () => unknown }) => {
+            const val = getValue() as number;
+            if (Math.abs(val) < threshold) return <span className="num-neutral">-</span>;
+            return (
+              <span className={`font-semibold ${val > 0 ? "num-positive" : "num-negative"}`}>
+                {val.toLocaleString("en-US", { minimumFractionDigits: decimals, maximumFractionDigits: decimals })}
+              </span>
+            );
+          },
+        };
+      }),
       {
         accessorKey: "traderName",
         header: "Trader",
@@ -403,7 +408,7 @@ export default function PmxLedgerPage() {
         },
       },
     ],
-    []
+    [metalUnit]
   );
 
   const summary = ledgerData?.summary;
@@ -489,6 +494,8 @@ export default function PmxLedgerPage() {
             <option value="XAUUSD">XAU/USD</option>
             <option value="USDZAR">USD/ZAR</option>
             <option value="XAGUSD">XAG/USD</option>
+            <option value="XPTUSD">XPT/USD</option>
+            <option value="XPDUSD">XPD/USD</option>
           </select>
         </div>
         <div>
@@ -550,6 +557,33 @@ export default function PmxLedgerPage() {
             <option value="Open">Open</option>
             <option value="Closed">Closed</option>
           </select>
+        </div>
+        <div>
+          <label className="mb-1 block text-xs font-medium text-[var(--color-text-secondary)]">
+            Metal Unit
+          </label>
+          <div className="inline-flex rounded-lg border border-[var(--color-border)] overflow-hidden">
+            <button
+              onClick={() => setMetalUnit("oz")}
+              className={`px-3 py-1.5 text-sm font-medium transition-colors ${
+                metalUnit === "oz"
+                  ? "bg-[var(--color-primary)] text-white"
+                  : "bg-[var(--color-surface)] text-[var(--color-text-secondary)] hover:bg-[var(--color-background)]"
+              }`}
+            >
+              OZ
+            </button>
+            <button
+              onClick={() => setMetalUnit("g")}
+              className={`px-3 py-1.5 text-sm font-medium transition-colors ${
+                metalUnit === "g"
+                  ? "bg-[var(--color-primary)] text-white"
+                  : "bg-[var(--color-surface)] text-[var(--color-text-secondary)] hover:bg-[var(--color-background)]"
+              }`}
+            >
+              Grams
+            </button>
+          </div>
         </div>
         <button
           onClick={() =>
