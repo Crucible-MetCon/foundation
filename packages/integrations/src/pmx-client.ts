@@ -113,6 +113,11 @@ function normalizeTradeNumber(value: unknown): string {
   return s;
 }
 
+const MONTH_ABBR: Record<string, string> = {
+  jan: "01", feb: "02", mar: "03", apr: "04", may: "05", jun: "06",
+  jul: "07", aug: "08", sep: "09", oct: "10", nov: "11", dec: "12",
+};
+
 function parseDate(value: unknown, defaultValue = ""): string {
   const text = String(value ?? "").trim();
   if (!text) return defaultValue;
@@ -121,9 +126,16 @@ function parseDate(value: unknown, defaultValue = ""): string {
   const isoMatch = text.match(/^(\d{4})-(\d{2})-(\d{2})/);
   if (isoMatch) return `${isoMatch[1]}-${isoMatch[2]}-${isoMatch[3]}`;
 
-  // Try DD-MM-YYYY or DD/MM/YYYY
+  // Try DD-MM-YYYY or DD/MM/YYYY (numeric month)
   const dmyMatch = text.match(/^(\d{2})[-/](\d{2})[-/](\d{4})/);
   if (dmyMatch) return `${dmyMatch[3]}-${dmyMatch[2]}-${dmyMatch[1]}`;
+
+  // Try DD-Mon-YYYY (e.g. "05-Mar-2026") — PMX API format
+  const monMatch = text.match(/^(\d{1,2})[-/ ]([A-Za-z]{3})[-/ ](\d{4})/);
+  if (monMatch) {
+    const mm = MONTH_ABBR[monMatch[2].toLowerCase()];
+    if (mm) return `${monMatch[3]}-${mm}-${monMatch[1].padStart(2, "0")}`;
+  }
 
   // Try YYYYMMDD
   const compactMatch = text.match(/^(\d{4})(\d{2})(\d{2})/);
