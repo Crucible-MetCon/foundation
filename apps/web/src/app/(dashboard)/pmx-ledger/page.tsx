@@ -267,9 +267,21 @@ export default function PmxLedgerPage() {
         accessorKey: "docNumber",
         header: "Doc #",
         size: 120,
-        cell: ({ getValue }) => (
-          <span className="font-mono text-xs">{getValue() as string}</span>
-        ),
+        cell: ({ getValue }) => {
+          const doc = getValue() as string;
+          if (!doc) return <span className="font-mono text-xs">-</span>;
+          return (
+            <a
+              href={`/api/pmx/confirmation/${encodeURIComponent(doc)}`}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="font-mono text-xs text-[var(--color-primary)] underline decoration-dotted hover:decoration-solid"
+              title="Download trade confirmation"
+            >
+              {doc}
+            </a>
+          );
+        },
       },
       {
         accessorKey: "tradeDate",
@@ -341,6 +353,34 @@ export default function PmxLedgerPage() {
           return (
             <span className={`font-semibold ${val > 0.01 ? "num-positive" : val < -0.01 ? "num-negative" : "num-neutral"}`}>
               {Math.abs(val) < 0.01 ? "-" : fmt(val)}
+            </span>
+          );
+        },
+      },
+      {
+        accessorKey: "netXauOz",
+        header: "Net Au OZ",
+        size: 100,
+        cell: ({ getValue }) => {
+          const val = getValue() as number;
+          if (Math.abs(val) < 0.0001) return <span className="num-neutral">-</span>;
+          return (
+            <span className={`font-semibold ${val > 0 ? "num-positive" : "num-negative"}`}>
+              {val.toLocaleString("en-US", { minimumFractionDigits: 3, maximumFractionDigits: 3 })}
+            </span>
+          );
+        },
+      },
+      {
+        accessorKey: "netXauGrams",
+        header: "Net Au G",
+        size: 100,
+        cell: ({ getValue }) => {
+          const val = getValue() as number;
+          if (Math.abs(val) < 0.01) return <span className="num-neutral">-</span>;
+          return (
+            <span className={`font-semibold ${val > 0 ? "num-positive" : "num-negative"}`}>
+              {val.toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
             </span>
           );
         },
