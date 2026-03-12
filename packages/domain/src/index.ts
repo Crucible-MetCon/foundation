@@ -19,3 +19,15 @@ export type {
   LedgerRow,
   LedgerSummary,
 } from "./ledger";
+
+export {
+  buildHedgingComparison,
+  computeHedgingSummary,
+} from "./hedging";
+
+export type {
+  TradeMcBooking,
+  PmxHedgeTrade,
+  HedgingRow,
+  HedgingSummary,
+} from "./hedging";
