@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { Download, FileSpreadsheet, Database } from "lucide-react";
 import { PageShell } from "@/components/layout/page-shell";
+import { downloadCSV } from "@/lib/export-utils";
 
 // ── Types ──
 
@@ -55,36 +56,6 @@ interface TradeMCTradeRow {
   created_at: string;
   company_name: string;
   company_refining_rate: string | null;
-}
-
-// ── CSV generation ──
-
-function downloadCSV(data: Record<string, unknown>[], filename: string) {
-  if (!data.length) return;
-  const headers = Object.keys(data[0]);
-  const csvRows = [
-    headers.join(","),
-    ...data.map((row) =>
-      headers
-        .map((h) => {
-          const val = row[h];
-          if (val == null) return "";
-          const str = String(val);
-          if (str.includes(",") || str.includes('"') || str.includes("\n")) {
-            return `"${str.replace(/"/g, '""')}"`;
-          }
-          return str;
-        })
-        .join(",")
-    ),
-  ];
-  const blob = new Blob([csvRows.join("\n")], { type: "text/csv" });
-  const url = URL.createObjectURL(blob);
-  const a = document.createElement("a");
-  a.href = url;
-  a.download = filename;
-  a.click();
-  URL.revokeObjectURL(url);
 }
 
 // ── PMX Ledger row → flat export object ──

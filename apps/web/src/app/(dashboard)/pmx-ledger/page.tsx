@@ -3,14 +3,17 @@
 import { useState, useCallback, useMemo } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { type ColumnDef } from "@tanstack/react-table";
+import { Download, FileText } from "lucide-react";
 import { PageShell } from "@/components/layout/page-shell";
 import { DataTable, numCell, statusBadge } from "@/components/ui/data-table";
 import { fmt, fmtDate } from "@/lib/utils";
+import { downloadCSV, downloadPDF } from "@/lib/export-utils";
 
 // ── Types ──
 interface LedgerRow {
   id: number;
   tradeNumber: string;
+  fncNumber: string;
   docNumber: string;
   tradeDate: string;
   valueDate: string;
@@ -79,6 +82,48 @@ interface Filters {
   startDate: string;
   endDate: string;
   status: string;
+}
+
+// ── Export helpers ──
+
+function splitSymbolForExport(sym: string): { base: string; quote: string } {
+  const s = (sym ?? "").toUpperCase().trim();
+  if (s.includes("/")) {
+    const [base, quote] = s.split("/", 2);
+    return { base, quote };
+  }
+  if (s.length === 6) return { base: s.slice(0, 3), quote: s.slice(3) };
+  return { base: s, quote: "" };
+}
+
+function mapToExportRow(row: LedgerRow) {
+  const symbol = row.symbol;
+  const { base } = splitSymbolForExport(symbol);
+  const isBuy = row.side === "BUY";
+  const isMetal = ["XAU", "XAG", "XPT", "XPD"].includes(base);
+
+  // Per-trade net metal quantity (positive=received, negative=delivered)
+  let netXau = "";
+  if (isMetal && base === "XAU") {
+    netXau = (isBuy ? row.quantity : -row.quantity).toFixed(4);
+  }
+
+  const netUsd = row.creditUsd - row.debitUsd;
+  const netZar = row.creditZar - row.debitZar;
+
+  return {
+    "Date": row.tradeDate,
+    "Ref #": row.docNumber,
+    "Type": row.docNumber ? row.docNumber.split("/")[0] : "",
+    "Trade #": row.tradeNumber,
+    "FNC #": row.fncNumber || "",
+    "Symbol": symbol.length === 6 ? `${symbol.slice(0, 3)}/${symbol.slice(3)}` : symbol,
+    "Side": row.side || "",
+    "Net XAU (oz)": netXau,
+    "Net USD": netUsd !== 0 ? netUsd.toFixed(4) : "",
+    "Net ZAR": netZar !== 0 ? netZar.toFixed(4) : "",
+    "Narration": row.narration,
+  };
 }
 
 // ── Editable cell component ──
@@ -246,6 +291,28 @@ export default function PmxLedgerPage() {
       queryClient.invalidateQueries({ queryKey: ["pmx-status"] });
     },
   });
+
+  // Export handlers
+  const handleExportCSV = useCallback(() => {
+    if (!ledgerData?.rows?.length) return;
+    // Reverse to oldest-first (data comes newest-first from API)
+    const sorted = [...ledgerData.rows].reverse();
+    const exportRows = sorted.map(mapToExportRow);
+    const dateSuffix = new Date().toISOString().slice(0, 10);
+    downloadCSV(exportRows, `pmx-ledger-${dateSuffix}.csv`);
+  }, [ledgerData]);
+
+  const handleExportPDF = useCallback(async () => {
+    if (!ledgerData?.rows?.length) return;
+    const sorted = [...ledgerData.rows].reverse();
+    const exportRows = sorted.map(mapToExportRow);
+    const dateSuffix = new Date().toISOString().slice(0, 10);
+    await downloadPDF(
+      exportRows,
+      `pmx-ledger-${dateSuffix}.pdf`,
+      `PMX Ledger - ${dateSuffix}`,
+    );
+  }, [ledgerData]);
 
   // Table columns
   const columns = useMemo<ColumnDef<LedgerRow, any>[]>(
@@ -433,26 +500,46 @@ export default function PmxLedgerPage() {
       title="PMX Ledger"
       description="View and manage PMX/StoneX trading deals with running balances."
       actions={
-        <button
-          onClick={() => syncMutation.mutate()}
-          disabled={syncMutation.isPending}
-          className="inline-flex items-center gap-2 rounded-lg bg-[var(--color-primary)] px-4 py-2 text-sm font-medium text-white hover:bg-[var(--color-primary-hover)] disabled:opacity-50 transition-colors"
-        >
-          {syncMutation.isPending ? (
-            <>
-              <div className="h-4 w-4 animate-spin rounded-full border-2 border-white border-t-transparent" />
-              Syncing...
-            </>
-          ) : (
-            <>
-              <svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="2">
-                <path d="M2 8a6 6 0 0 1 10.3-4.2M14 8a6 6 0 0 1-10.3 4.2" />
-                <path d="M12 2v4h-4M4 14v-4h4" />
-              </svg>
-              Sync PMX
-            </>
-          )}
-        </button>
+        <>
+          <button
+            onClick={handleExportCSV}
+            disabled={!ledgerData?.rows?.length}
+            className="inline-flex items-center gap-2 rounded-lg border border-[var(--color-border)] px-4 py-2 text-sm font-medium text-[var(--color-text-secondary)] hover:bg-[var(--color-background)] disabled:opacity-50 transition-colors"
+            title="Export filtered data to CSV"
+          >
+            <Download className="h-4 w-4" />
+            CSV
+          </button>
+          <button
+            onClick={handleExportPDF}
+            disabled={!ledgerData?.rows?.length}
+            className="inline-flex items-center gap-2 rounded-lg border border-[var(--color-border)] px-4 py-2 text-sm font-medium text-[var(--color-text-secondary)] hover:bg-[var(--color-background)] disabled:opacity-50 transition-colors"
+            title="Export filtered data to PDF"
+          >
+            <FileText className="h-4 w-4" />
+            PDF
+          </button>
+          <button
+            onClick={() => syncMutation.mutate()}
+            disabled={syncMutation.isPending}
+            className="inline-flex items-center gap-2 rounded-lg bg-[var(--color-primary)] px-4 py-2 text-sm font-medium text-white hover:bg-[var(--color-primary-hover)] disabled:opacity-50 transition-colors"
+          >
+            {syncMutation.isPending ? (
+              <>
+                <div className="h-4 w-4 animate-spin rounded-full border-2 border-white border-t-transparent" />
+                Syncing...
+              </>
+            ) : (
+              <>
+                <svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="2">
+                  <path d="M2 8a6 6 0 0 1 10.3-4.2M14 8a6 6 0 0 1-10.3 4.2" />
+                  <path d="M12 2v4h-4M4 14v-4h4" />
+                </svg>
+                Sync PMX
+              </>
+            )}
+          </button>
+        </>
       }
     >
       {/* Sync result banner */}
