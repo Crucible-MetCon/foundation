@@ -3,7 +3,7 @@
 import { useState, useCallback, useMemo } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { type ColumnDef } from "@tanstack/react-table";
-import { Download, FileText, CheckCircle2, XCircle, RefreshCw, Loader2 } from "lucide-react";
+import { Download, FileText, CheckCircle2, XCircle, Loader2, ShieldCheck } from "lucide-react";
 import { PageShell } from "@/components/layout/page-shell";
 import { DataTable, numCell, statusBadge } from "@/components/ui/data-table";
 import { fmt, fmtDate } from "@/lib/utils";
@@ -234,6 +234,8 @@ function BalanceCard({
   credit,
   unit,
   decimals = 2,
+  auditCheck,
+  auditLoading,
 }: {
   label: string;
   net: number;
@@ -241,6 +243,8 @@ function BalanceCard({
   credit: number;
   unit: string;
   decimals?: number;
+  auditCheck?: AuditCheck | null;
+  auditLoading?: boolean;
 }) {
   const fmtVal = (n: number) =>
     n.toLocaleString("en-US", {
@@ -262,87 +266,29 @@ function BalanceCard({
       <div className="mt-0.5 text-xs text-[var(--color-text-secondary)]">
         Debit: {fmtVal(debit)} | Credit: {fmtVal(credit)}
       </div>
-    </div>
-  );
-}
-
-function AuditCard({
-  checks,
-  loading,
-  error,
-  onRefresh,
-  auditedAt,
-}: {
-  checks: AuditCheck[] | null;
-  loading: boolean;
-  error: string | null;
-  onRefresh: () => void;
-  auditedAt: string | null;
-}) {
-  return (
-    <div className="rounded-xl border border-[var(--color-border)] bg-[var(--color-surface)] p-4 col-span-2 sm:col-span-1">
-      <div className="flex items-center justify-between mb-2">
-        <div className="text-xs font-medium text-[var(--color-text-muted)] uppercase tracking-wider">
-          System Audit
-        </div>
-        <button
-          onClick={onRefresh}
-          disabled={loading}
-          className="p-1 rounded hover:bg-[var(--color-background)] transition-colors disabled:opacity-50"
-          title="Run audit"
-        >
-          {loading ? (
-            <Loader2 className="h-3.5 w-3.5 animate-spin text-[var(--color-text-muted)]" />
+      {/* PMX verification status */}
+      <div className="mt-1.5 flex items-center gap-1 text-[10px]">
+        {auditLoading ? (
+          <>
+            <Loader2 className="h-3 w-3 animate-spin text-[var(--color-text-muted)]" />
+            <span className="text-[var(--color-text-muted)]">Verifying...</span>
+          </>
+        ) : auditCheck ? (
+          auditCheck.pass ? (
+            <>
+              <CheckCircle2 className="h-3 w-3 text-green-500" />
+              <span className="text-green-600">Agrees with PMX</span>
+            </>
           ) : (
-            <RefreshCw className="h-3.5 w-3.5 text-[var(--color-text-muted)]" />
-          )}
-        </button>
+            <>
+              <XCircle className="h-3 w-3 text-red-500" />
+              <span className="text-red-600">PMX: {auditCheck.pmxValue} {unit}</span>
+            </>
+          )
+        ) : (
+          <span className="text-[var(--color-text-muted)]">Not verified</span>
+        )}
       </div>
-
-      {error && (
-        <div className="text-xs text-red-500 mb-1">{error}</div>
-      )}
-
-      {!checks && !loading && !error && (
-        <div className="text-xs text-[var(--color-text-secondary)] italic">
-          Click refresh to run audit
-        </div>
-      )}
-
-      {loading && !checks && (
-        <div className="text-xs text-[var(--color-text-secondary)] italic">
-          Fetching from PMX API...
-        </div>
-      )}
-
-      {checks && (
-        <div className="space-y-0.5">
-          {checks.map((check) => (
-            <div key={check.label} className="flex items-center gap-1.5 text-xs">
-              {check.pass ? (
-                <CheckCircle2 className="h-3.5 w-3.5 text-green-500 flex-shrink-0" />
-              ) : (
-                <XCircle className="h-3.5 w-3.5 text-red-500 flex-shrink-0" />
-              )}
-              <span className="text-[var(--color-text-secondary)]">{check.label}:</span>
-              <span className={`font-medium ${check.pass ? "text-green-600" : "text-red-600"}`}>
-                {check.localValue}
-              </span>
-              {!check.pass && (
-                <span className="text-[var(--color-text-muted)]">
-                  (PMX: {check.pmxValue})
-                </span>
-              )}
-            </div>
-          ))}
-        </div>
-      )}
-
-      {auditedAt && (
-        <div className="mt-1.5 text-[10px] text-[var(--color-text-muted)]">
-          Last audit: {new Date(auditedAt).toLocaleTimeString()}
-        </div>
-      )}
     </div>
   );
 }
@@ -413,6 +359,15 @@ export default function PmxLedgerPage() {
     enabled: false, // Manual trigger only
     staleTime: 5 * 60_000, // 5 min cache
   });
+
+  // Helper to look up an audit check by label
+  const getAuditCheck = useCallback(
+    (label: string): AuditCheck | null => {
+      if (!auditData?.checks) return null;
+      return auditData.checks.find((c) => c.label === label) ?? null;
+    },
+    [auditData],
+  );
 
   // Sync mutation
   const syncMutation = useMutation({
@@ -669,6 +624,19 @@ export default function PmxLedgerPage() {
             PDF
           </button>
           <button
+            onClick={() => runAudit()}
+            disabled={auditLoading}
+            className="inline-flex items-center gap-2 rounded-lg border border-[var(--color-border)] px-4 py-2 text-sm font-medium text-[var(--color-text-secondary)] hover:bg-[var(--color-background)] disabled:opacity-50 transition-colors"
+            title="Verify balances against PMX API"
+          >
+            {auditLoading ? (
+              <Loader2 className="h-4 w-4 animate-spin" />
+            ) : (
+              <ShieldCheck className="h-4 w-4" />
+            )}
+            Verify
+          </button>
+          <button
             onClick={() => syncMutation.mutate()}
             disabled={syncMutation.isPending}
             className="inline-flex items-center gap-2 rounded-lg bg-[var(--color-primary)] px-4 py-2 text-sm font-medium text-white hover:bg-[var(--color-primary-hover)] disabled:opacity-50 transition-colors"
@@ -706,61 +674,111 @@ export default function PmxLedgerPage() {
 
       {/* Summary cards */}
       {summary && (
-        <div className="grid grid-cols-2 gap-4 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-7">
-          <BalanceCard
-            label="Net USD"
-            net={summary.totalCreditUsd - summary.totalDebitUsd}
-            debit={summary.totalDebitUsd}
-            credit={summary.totalCreditUsd}
-            unit="$"
-          />
-          <BalanceCard
-            label="Net ZAR"
-            net={summary.totalCreditZar - summary.totalDebitZar}
-            debit={summary.totalDebitZar}
-            credit={summary.totalCreditZar}
-            unit="R"
-          />
-          <BalanceCard
-            label="Net Gold"
-            net={summary.totalCreditXau - summary.totalDebitXau}
-            debit={summary.totalDebitXau}
-            credit={summary.totalCreditXau}
-            unit="oz"
-            decimals={3}
-          />
-          <BalanceCard
-            label="Net Silver"
-            net={summary.totalCreditXag - summary.totalDebitXag}
-            debit={summary.totalDebitXag}
-            credit={summary.totalCreditXag}
-            unit="oz"
-            decimals={3}
-          />
-          <BalanceCard
-            label="Net Platinum"
-            net={summary.totalCreditXpt - summary.totalDebitXpt}
-            debit={summary.totalDebitXpt}
-            credit={summary.totalCreditXpt}
-            unit="oz"
-            decimals={3}
-          />
-          <BalanceCard
-            label="Net Palladium"
-            net={summary.totalCreditXpd - summary.totalDebitXpd}
-            debit={summary.totalDebitXpd}
-            credit={summary.totalCreditXpd}
-            unit="oz"
-            decimals={3}
-          />
-          <AuditCard
-            checks={auditData?.checks ?? null}
-            loading={auditLoading}
-            error={auditError ? (auditError as Error).message : (auditData?.error ?? null)}
-            onRefresh={() => runAudit()}
-            auditedAt={auditData?.auditedAt ?? null}
-          />
-        </div>
+        <>
+          <div className="grid grid-cols-2 gap-4 sm:grid-cols-3 lg:grid-cols-6">
+            <BalanceCard
+              label="Net USD"
+              net={summary.totalCreditUsd - summary.totalDebitUsd}
+              debit={summary.totalDebitUsd}
+              credit={summary.totalCreditUsd}
+              unit="$"
+              auditCheck={getAuditCheck("Net USD")}
+              auditLoading={auditLoading}
+            />
+            <BalanceCard
+              label="Net ZAR"
+              net={summary.totalCreditZar - summary.totalDebitZar}
+              debit={summary.totalDebitZar}
+              credit={summary.totalCreditZar}
+              unit="R"
+              auditCheck={getAuditCheck("Net ZAR")}
+              auditLoading={auditLoading}
+            />
+            <BalanceCard
+              label="Net Gold"
+              net={summary.totalCreditXau - summary.totalDebitXau}
+              debit={summary.totalDebitXau}
+              credit={summary.totalCreditXau}
+              unit="oz"
+              decimals={3}
+              auditCheck={getAuditCheck("Net Gold")}
+              auditLoading={auditLoading}
+            />
+            <BalanceCard
+              label="Net Silver"
+              net={summary.totalCreditXag - summary.totalDebitXag}
+              debit={summary.totalDebitXag}
+              credit={summary.totalCreditXag}
+              unit="oz"
+              decimals={3}
+              auditCheck={getAuditCheck("Net Silver")}
+              auditLoading={auditLoading}
+            />
+            <BalanceCard
+              label="Net Platinum"
+              net={summary.totalCreditXpt - summary.totalDebitXpt}
+              debit={summary.totalDebitXpt}
+              credit={summary.totalCreditXpt}
+              unit="oz"
+              decimals={3}
+              auditCheck={getAuditCheck("Net Platinum")}
+              auditLoading={auditLoading}
+            />
+            <BalanceCard
+              label="Net Palladium"
+              net={summary.totalCreditXpd - summary.totalDebitXpd}
+              debit={summary.totalDebitXpd}
+              credit={summary.totalCreditXpd}
+              unit="oz"
+              decimals={3}
+              auditCheck={getAuditCheck("Net Palladium")}
+              auditLoading={auditLoading}
+            />
+          </div>
+          {/* DB Records & Last Updated audit status bar */}
+          {(auditData?.checks || auditLoading) && (
+            <div className="flex flex-wrap items-center gap-4 text-xs text-[var(--color-text-secondary)]">
+              {auditLoading ? (
+                <span className="flex items-center gap-1">
+                  <Loader2 className="h-3 w-3 animate-spin" /> Verifying against PMX...
+                </span>
+              ) : (
+                <>
+                  {getAuditCheck("DB Records") && (
+                    <span className="flex items-center gap-1">
+                      {getAuditCheck("DB Records")!.pass ? (
+                        <CheckCircle2 className="h-3 w-3 text-green-500" />
+                      ) : (
+                        <XCircle className="h-3 w-3 text-red-500" />
+                      )}
+                      DB Records: {getAuditCheck("DB Records")!.localValue}
+                      {!getAuditCheck("DB Records")!.pass && (
+                        <span className="text-[var(--color-text-muted)]">
+                          (PMX: {getAuditCheck("DB Records")!.pmxValue})
+                        </span>
+                      )}
+                    </span>
+                  )}
+                  {getAuditCheck("Last Updated") && (
+                    <span className="flex items-center gap-1">
+                      {getAuditCheck("Last Updated")!.pass ? (
+                        <CheckCircle2 className="h-3 w-3 text-green-500" />
+                      ) : (
+                        <XCircle className="h-3 w-3 text-red-500" />
+                      )}
+                      Last Updated: {getAuditCheck("Last Updated")!.localValue}
+                    </span>
+                  )}
+                  {auditData?.auditedAt && (
+                    <span className="text-[var(--color-text-muted)]">
+                      Verified at {new Date(auditData.auditedAt).toLocaleTimeString()}
+                    </span>
+                  )}
+                </>
+              )}
+            </div>
+          )}
+        </>
       )}
 
       {/* Filters */}
