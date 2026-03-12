@@ -316,13 +316,13 @@ export default function PmxLedgerPage() {
       },
       {
         accessorKey: "debitUsd",
-        header: "Debit $+Au",
+        header: "Debit $",
         size: 110,
         cell: ({ getValue }) => numCell(getValue() as number),
       },
       {
         accessorKey: "creditUsd",
-        header: "Credit +$-Au",
+        header: "Credit $",
         size: 110,
         cell: ({ getValue }) => numCell(getValue() as number),
       },
