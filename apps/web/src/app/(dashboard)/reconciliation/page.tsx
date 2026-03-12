@@ -76,7 +76,7 @@ function fmtCurrency(
 function deltaColorClass(val: number | null, currency: string): string {
   if (val == null) return "text-[var(--color-text-muted)]";
   const threshold = currency === "XAU" ? 0.01 : 1;
-  if (Math.abs(val) <= threshold) return "text-emerald-600";
+  if (Math.abs(val) <= threshold) return "text-green-600";
   return "text-red-600";
 }
 
@@ -160,7 +160,7 @@ function EditableOpeningBalance({
         <button
           onClick={handleSave}
           disabled={mutation.isPending}
-          className="rounded p-1 text-emerald-600 hover:bg-emerald-50 transition-colors disabled:opacity-50"
+          className="rounded p-1 text-green-600 hover:bg-green-50 transition-colors disabled:opacity-50"
           title="Save"
         >
           <Save size={14} />
@@ -229,7 +229,7 @@ function ReconCard({
         <span
           className={`tabular-nums ${
             recon.transactionTotal != null && recon.transactionTotal > 0
-              ? "text-emerald-600"
+              ? "text-green-600"
               : recon.transactionTotal != null && recon.transactionTotal < 0
                 ? "text-red-600"
                 : ""
@@ -375,7 +375,7 @@ export default function ReconciliationPage() {
           return (
             <span
               className={`text-xs font-semibold ${
-                val === "BUY" ? "text-emerald-600" : "text-red-600"
+                val === "BUY" ? "text-green-600" : "text-red-600"
               }`}
             >
               {val}

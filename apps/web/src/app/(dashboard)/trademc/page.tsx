@@ -361,7 +361,7 @@ export default function TradeMCPage() {
     >
       {/* Sync result banner */}
       {syncMutation.isSuccess && (
-        <div className="rounded-lg border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm text-emerald-800">
+        <div className="rounded-lg border border-green-200 bg-green-50 px-4 py-3 text-sm text-green-800">
           Sync completed successfully.
         </div>
       )}

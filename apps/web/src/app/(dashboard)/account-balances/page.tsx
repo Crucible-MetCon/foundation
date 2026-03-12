@@ -28,7 +28,7 @@ interface BalancesResponse {
 // ── Helpers ──
 
 function balanceColor(val: number): string {
-  if (val > 0.001) return "text-emerald-600";
+  if (val > 0.001) return "text-green-600";
   if (val < -0.001) return "text-red-600";
   return "text-[var(--color-text-primary)]";
 }
@@ -172,12 +172,12 @@ export default function AccountBalancesPage() {
 
           {/* US Dollar (USD) */}
           <div className="relative rounded-2xl border border-[var(--color-border)] bg-[var(--color-surface)] p-6 overflow-hidden">
-            <span className="absolute top-4 right-4 rounded-full bg-emerald-100 px-2.5 py-0.5 text-xs font-semibold text-emerald-700">
+            <span className="absolute top-4 right-4 rounded-full bg-green-100 px-2.5 py-0.5 text-xs font-semibold text-green-700">
               USD
             </span>
             <div className="flex items-start gap-4">
-              <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-emerald-100">
-                <DollarSign size={20} className="text-emerald-600" />
+              <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-green-100">
+                <DollarSign size={20} className="text-green-600" />
               </div>
               <div className="min-w-0">
                 <p className="text-xs font-medium text-[var(--color-text-secondary)]">
@@ -256,7 +256,7 @@ export default function AccountBalancesPage() {
           <StatCard
             label="Closed Positions"
             value={stats.closedPositions.toLocaleString()}
-            className="text-emerald-600"
+            className="text-green-600"
           />
         </div>
       ) : null}

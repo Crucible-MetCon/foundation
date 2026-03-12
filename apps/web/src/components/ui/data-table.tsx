@@ -314,7 +314,7 @@ export function statusBadge(
   variant: "success" | "danger" | "warning" | "neutral" = "neutral"
 ): ReactNode {
   const colors = {
-    success: "bg-emerald-50 text-emerald-700 border-emerald-200",
+    success: "bg-green-50 text-green-700 border-green-200",
     danger: "bg-red-50 text-red-700 border-red-200",
     warning: "bg-amber-50 text-amber-700 border-amber-200",
     neutral: "bg-slate-50 text-slate-600 border-slate-200",

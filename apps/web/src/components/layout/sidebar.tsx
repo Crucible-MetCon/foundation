@@ -82,14 +82,15 @@ export function Sidebar({ user }: SidebarProps) {
 
   return (
     <aside className="flex w-60 flex-col bg-[var(--color-sidebar-bg)]">
-      {/* Logo */}
+      {/* Logo - MC Monogram */}
       <div className="flex h-16 items-center gap-3 px-5">
-        <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-[var(--color-primary)]">
-          <span className="text-lg font-bold text-white">F</span>
+        <div className="flex items-baseline">
+          <span className="text-2xl font-bold tracking-tight text-white" style={{ fontFamily: "var(--font-serif)" }}>MC</span>
+          <span className="ml-0.5 inline-block h-2.5 w-2.5 rounded-sm bg-[var(--color-primary)]" />
         </div>
-        <div>
-          <h1 className="text-sm font-semibold text-white">Foundation</h1>
-          <p className="text-xs text-[var(--color-sidebar-text)]">
+        <div className="ml-1">
+          <h1 className="text-xs font-semibold uppercase tracking-[0.2em] text-white/90">Foundation</h1>
+          <p className="text-[10px] text-[var(--color-sidebar-text)]">
             FX & Metal Hedging
           </p>
         </div>

@@ -301,7 +301,7 @@ export default function ExportTradesPage() {
             <div
               className={`mt-3 rounded-lg px-3 py-2 text-sm ${
                 pmxMessage.startsWith("Exported")
-                  ? "border border-emerald-200 bg-emerald-50 text-emerald-800"
+                  ? "border border-green-200 bg-green-50 text-green-800"
                   : pmxMessage.startsWith("No rows")
                     ? "border border-amber-200 bg-amber-50 text-amber-800"
                     : "border border-red-200 bg-red-50 text-red-800"
@@ -402,7 +402,7 @@ export default function ExportTradesPage() {
             <div
               className={`mt-3 rounded-lg px-3 py-2 text-sm ${
                 tmcMessage.startsWith("Exported")
-                  ? "border border-emerald-200 bg-emerald-50 text-emerald-800"
+                  ? "border border-green-200 bg-green-50 text-green-800"
                   : tmcMessage.startsWith("No rows")
                     ? "border border-amber-200 bg-amber-50 text-amber-800"
                     : "border border-red-200 bg-red-50 text-red-800"

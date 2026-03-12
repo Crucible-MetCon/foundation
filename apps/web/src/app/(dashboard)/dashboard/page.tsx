@@ -73,7 +73,7 @@ interface ProfitResponse {
 // ── Helpers ──
 
 function balanceColor(val: number): string {
-  if (val > 0.001) return "text-emerald-600";
+  if (val > 0.001) return "text-green-600";
   if (val < -0.001) return "text-red-600";
   return "text-[var(--color-text-primary)]";
 }
@@ -136,8 +136,8 @@ const quickLinks = [
     icon: ArrowRightLeft,
     title: "Profit Report",
     description: "Monthly profit analysis by metal and exchange.",
-    color: "text-emerald-600",
-    bg: "bg-emerald-100",
+    color: "text-green-600",
+    bg: "bg-green-100",
   },
   {
     href: "/reconciliation",
@@ -260,8 +260,8 @@ export default function DashboardPage() {
           {/* US Dollar (USD) */}
           <div className="rounded-2xl border border-[var(--color-border)] bg-[var(--color-surface)] p-5 overflow-hidden">
             <div className="flex items-start gap-3">
-              <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-emerald-100">
-                <DollarSign size={18} className="text-emerald-600" />
+              <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-green-100">
+                <DollarSign size={18} className="text-green-600" />
               </div>
               <div className="min-w-0">
                 <p className="text-xs font-medium text-[var(--color-text-secondary)]">
@@ -350,7 +350,7 @@ export default function DashboardPage() {
               className={`mt-1 text-xl font-semibold ${
                 hedgingSummary
                   ? parseFloat(hedgeRate) >= 80
-                    ? "text-emerald-600"
+                    ? "text-green-600"
                     : parseFloat(hedgeRate) >= 50
                       ? "text-amber-600"
                       : "text-red-600"
@@ -373,7 +373,7 @@ export default function DashboardPage() {
               className={`mt-1 text-xl font-semibold ${
                 profitSummary
                   ? profitSummary.totalProfitZar > 0
-                    ? "text-emerald-600"
+                    ? "text-green-600"
                     : profitSummary.totalProfitZar < 0
                       ? "text-red-600"
                       : "text-[var(--color-text-primary)]"
@@ -427,7 +427,7 @@ export default function DashboardPage() {
               <p className="text-xs font-medium text-[var(--color-text-secondary)]">
                 Fully Hedged
               </p>
-              <p className="mt-1 text-xl font-semibold text-emerald-600">
+              <p className="mt-1 text-xl font-semibold text-green-600">
                 {hedgingSummary.fullyHedged.toLocaleString()}
               </p>
             </div>

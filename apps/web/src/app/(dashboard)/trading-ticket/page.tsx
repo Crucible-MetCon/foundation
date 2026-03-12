@@ -344,7 +344,7 @@ export default function TradingTicketPage() {
             label="Profit"
             value={`R ${fmt(summary.profitZar, 2)}`}
             sub={`(${fmt(summary.profitPct, 1)}%)`}
-            className={summary.profitZar >= 0 ? "text-emerald-600" : "text-red-600"}
+            className={summary.profitZar >= 0 ? "text-green-600" : "text-red-600"}
           />
         </div>
       )}
@@ -536,7 +536,7 @@ export default function TradingTicketPage() {
                 <span
                   className={`inline-flex items-center rounded-full border px-2.5 py-0.5 text-sm font-semibold ${
                     summary.profitPct >= 0
-                      ? "bg-emerald-50 text-emerald-700 border-emerald-200"
+                      ? "bg-green-50 text-green-700 border-green-200"
                       : "bg-red-50 text-red-700 border-red-200"
                   }`}
                 >

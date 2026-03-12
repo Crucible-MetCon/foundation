@@ -370,7 +370,7 @@ export default function WeightTransactionsPage() {
         <StatCard
           label="Total Credit"
           value={`${fmt(summary.totalCredit, 2)} g`}
-          className="text-emerald-600"
+          className="text-green-600"
         />
         <StatCard
           label="Total Debit"
@@ -382,7 +382,7 @@ export default function WeightTransactionsPage() {
           value={`${fmt(summary.netWeight, 2)} g`}
           className={
             summary.netWeight > 0
-              ? "text-emerald-600"
+              ? "text-green-600"
               : summary.netWeight < 0
                 ? "text-red-600"
                 : "text-[var(--color-text-primary)]"

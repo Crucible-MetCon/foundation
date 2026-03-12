@@ -263,7 +263,7 @@ export default function HedgingPage() {
           <StatCard
             label="Fully Hedged"
             value={summary.fullyHedged.toLocaleString()}
-            className="text-emerald-600"
+            className="text-green-600"
           />
           <StatCard
             label="Partially Hedged"
