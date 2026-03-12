@@ -1,29 +1,9 @@
 import { NextResponse } from "next/server";
 import { db } from "@/lib/db";
 import { sql } from "drizzle-orm";
-import { mapRowToTrade } from "@foundation/integrations";
 
 export async function GET() {
   try {
-    // Debug: test parseDate with a mock PMX row
-    const testRow = {
-      docno: "TEST/001",
-      docdate: "05-Mar-2026",
-      valdate: "09-Mar-2026",
-      inst_desc: "XAU-USD",
-      deal_type: "BUY",
-      grs_qty: "100",
-      mtl_rate: "5000",
-      remarks: "Test trade",
-      stk_type_name: "XAU",
-    };
-    const mapped = mapRowToTrade(testRow, 1);
-    const parseDebug = {
-      inputDocdate: testRow.docdate,
-      inputValdate: testRow.valdate,
-      mappedTradeDate: mapped?.tradeDate,
-      mappedValueDate: mapped?.valueDate,
-    };
     const countResult = await (db as any).execute(
       sql`SELECT COUNT(*) as count FROM pmx_trades`
     );
@@ -41,7 +21,6 @@ export async function GET() {
 
     return NextResponse.json({
       ok: true,
-      parseDebug,
       tradeCount: count,
       lastSync,
       latestTradeDate: latestTrade,
