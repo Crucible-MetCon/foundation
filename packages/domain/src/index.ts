@@ -31,3 +31,24 @@ export type {
   HedgingRow,
   HedgingSummary,
 } from "./hedging";
+
+export { buildProfitReport } from "./profit";
+
+export type {
+  TmTradeInput,
+  PmxTradeInput,
+  ProfitTradeRow,
+  ProfitMonth,
+  ProfitSummary,
+  ProfitReport,
+} from "./profit";
+
+export { buildForwardExposure } from "./forward-exposure";
+
+export type {
+  ForwardTradeInput,
+  ForwardRow,
+  ForwardCalendarRow,
+  ForwardSummary,
+  ForwardExposureResult,
+} from "./forward-exposure";
