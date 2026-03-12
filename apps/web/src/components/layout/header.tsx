@@ -11,12 +11,15 @@ interface HeaderProps {
 }
 
 const pageTitles: Record<string, string> = {
+  "/dashboard": "Dashboard",
+  "/account-balances": "Account Balances",
   "/pmx-ledger": "PMX Ledger",
   "/open-positions": "Open Positions & Revaluation",
   "/forward-exposure": "Forward Exposure",
   "/hedging": "Gold Hedging",
   "/profit": "Profit Report",
   "/trademc": "TradeMC Trades",
+  "/weight-transactions": "Weight Transactions",
   "/suppliers": "Supplier Balances",
   "/trading-ticket": "Trading Ticket",
   "/reconciliation": "Account Reconciliation",

@@ -15,6 +15,9 @@ import {
   Wallet,
   Building2,
   ClipboardCheck,
+  Home,
+  Landmark,
+  Package,
 } from "lucide-react";
 
 interface SidebarProps {
@@ -26,6 +29,13 @@ interface SidebarProps {
 }
 
 const navSections = [
+  {
+    label: "Overview",
+    items: [
+      { href: "/dashboard", label: "Dashboard", icon: Home },
+      { href: "/account-balances", label: "Account Balances", icon: Landmark },
+    ],
+  },
   {
     label: "Trading",
     items: [
@@ -44,7 +54,8 @@ const navSections = [
     label: "TradeMC",
     items: [
       { href: "/trademc", label: "TradeMC Trades", icon: ClipboardCheck },
-      { href: "/suppliers", label: "Supplier Balances", icon: Building2 },
+      { href: "/weight-transactions", label: "Weight Transactions", icon: Package },
+      { href: "/suppliers", label: "Suppliers", icon: Building2 },
     ],
   },
   {
