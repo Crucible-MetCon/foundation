@@ -11,7 +11,6 @@ import { fmt, fmtDate } from "@/lib/utils";
 interface LedgerRow {
   id: number;
   tradeNumber: string;
-  fncNumber: string;
   docNumber: string;
   tradeDate: string;
   valueDate: string;
@@ -77,7 +76,6 @@ interface PmxStatus {
 interface Filters {
   symbol: string;
   tradeNum: string;
-  fncNumber: string;
   startDate: string;
   endDate: string;
   status: string;
@@ -191,7 +189,6 @@ export default function PmxLedgerPage() {
   const [filters, setFilters] = useState<Filters>({
     symbol: "All",
     tradeNum: "",
-    fncNumber: "",
     startDate: "",
     endDate: "",
     status: "",
@@ -202,7 +199,6 @@ export default function PmxLedgerPage() {
     const params = new URLSearchParams();
     if (filters.symbol && filters.symbol !== "All") params.set("symbol", filters.symbol);
     if (filters.tradeNum) params.set("tradeNum", filters.tradeNum);
-    if (filters.fncNumber) params.set("fncNumber", filters.fncNumber);
     if (filters.startDate) params.set("startDate", filters.startDate);
     if (filters.endDate) params.set("endDate", filters.endDate);
     if (filters.status) params.set("status", filters.status);
@@ -264,11 +260,6 @@ export default function PmxLedgerPage() {
             value={row.original.tradeNumber}
           />
         ),
-      },
-      {
-        accessorKey: "fncNumber",
-        header: "FNC #",
-        size: 90,
       },
       {
         accessorKey: "docNumber",
@@ -536,18 +527,6 @@ export default function PmxLedgerPage() {
         </div>
         <div>
           <label className="mb-1 block text-xs font-medium text-[var(--color-text-secondary)]">
-            FNC #
-          </label>
-          <input
-            type="text"
-            value={filters.fncNumber}
-            onChange={(e) => setFilters((f) => ({ ...f, fncNumber: e.target.value }))}
-            placeholder="Search..."
-            className="w-28 rounded-lg border border-[var(--color-border)] bg-[var(--color-surface)] px-3 py-1.5 text-sm outline-none focus:border-[var(--color-primary)]"
-          />
-        </div>
-        <div>
-          <label className="mb-1 block text-xs font-medium text-[var(--color-text-secondary)]">
             From
           </label>
           <input
@@ -614,7 +593,6 @@ export default function PmxLedgerPage() {
             setFilters({
               symbol: "All",
               tradeNum: "",
-              fncNumber: "",
               startDate: "",
               endDate: "",
               status: "",

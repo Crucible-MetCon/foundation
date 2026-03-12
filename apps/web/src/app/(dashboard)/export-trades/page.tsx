@@ -9,7 +9,6 @@ import { PageShell } from "@/components/layout/page-shell";
 interface LedgerRow {
   id: number;
   tradeNumber: string;
-  fncNumber: string;
   docNumber: string;
   tradeDate: string;
   valueDate: string;
@@ -93,7 +92,6 @@ function downloadCSV(data: Record<string, unknown>[], filename: string) {
 function flattenLedgerRow(row: LedgerRow) {
   return {
     "Trade #": row.tradeNumber,
-    "FNC #": row.fncNumber,
     "Doc #": row.docNumber,
     "Trade Date": row.tradeDate,
     "Value Date": row.valueDate,
