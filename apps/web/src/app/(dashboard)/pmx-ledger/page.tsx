@@ -79,6 +79,7 @@ interface PmxStatus {
 interface Filters {
   symbol: string;
   tradeNum: string;
+  narration: string;
   startDate: string;
   endDate: string;
   status: string;
@@ -234,6 +235,7 @@ export default function PmxLedgerPage() {
   const [filters, setFilters] = useState<Filters>({
     symbol: "All",
     tradeNum: "",
+    narration: "",
     startDate: "",
     endDate: "",
     status: "",
@@ -244,6 +246,7 @@ export default function PmxLedgerPage() {
     const params = new URLSearchParams();
     if (filters.symbol && filters.symbol !== "All") params.set("symbol", filters.symbol);
     if (filters.tradeNum) params.set("tradeNum", filters.tradeNum);
+    if (filters.narration) params.set("narration", filters.narration);
     if (filters.startDate) params.set("startDate", filters.startDate);
     if (filters.endDate) params.set("endDate", filters.endDate);
     if (filters.status) params.set("status", filters.status);
@@ -495,6 +498,16 @@ export default function PmxLedgerPage() {
 
   const summary = ledgerData?.summary;
 
+  // Split rows into unallocated (no Trade #) and allocated (has Trade #)
+  const unallocatedRows = useMemo(
+    () => (ledgerData?.rows ?? []).filter((r) => !r.tradeNumber?.trim()),
+    [ledgerData],
+  );
+  const allocatedRows = useMemo(
+    () => (ledgerData?.rows ?? []).filter((r) => !!r.tradeNumber?.trim()),
+    [ledgerData],
+  );
+
   return (
     <PageShell
       title="PMX Ledger"
@@ -614,6 +627,18 @@ export default function PmxLedgerPage() {
         </div>
         <div>
           <label className="mb-1 block text-xs font-medium text-[var(--color-text-secondary)]">
+            Narration
+          </label>
+          <input
+            type="text"
+            value={filters.narration}
+            onChange={(e) => setFilters((f) => ({ ...f, narration: e.target.value }))}
+            placeholder="contains text"
+            className="w-36 rounded-lg border border-[var(--color-border)] bg-[var(--color-surface)] px-3 py-1.5 text-sm outline-none focus:border-[var(--color-primary)]"
+          />
+        </div>
+        <div>
+          <label className="mb-1 block text-xs font-medium text-[var(--color-text-secondary)]">
             From
           </label>
           <input
@@ -680,6 +705,7 @@ export default function PmxLedgerPage() {
             setFilters({
               symbol: "All",
               tradeNum: "",
+              narration: "",
               startDate: "",
               endDate: "",
               status: "",
@@ -691,23 +717,49 @@ export default function PmxLedgerPage() {
         </button>
       </div>
 
-      {/* Data Table */}
-      <DataTable
-        columns={columns}
-        data={ledgerData?.rows ?? []}
-        loading={isLoading}
-        compact
-        paginate
-        pageSize={100}
-        stickyHeader
-        maxHeight="calc(100vh - 420px)"
-        emptyMessage={
-          error
-            ? "Failed to load ledger data. Try syncing first."
-            : "No trades found. Click 'Sync PMX' to fetch trade data."
-        }
-        enableSorting={false}
-      />
+      {/* Unallocated Trades */}
+      <div>
+        <h3 className="mb-2 text-sm font-semibold text-[var(--color-text)]">
+          Unallocated Trades
+        </h3>
+        <DataTable
+          columns={columns}
+          data={unallocatedRows}
+          loading={isLoading}
+          compact
+          paginate={false}
+          enableSorting={false}
+          emptyMessage="No unallocated trades"
+        />
+        {!isLoading && (
+          <p className="mt-1 text-center text-xs text-[var(--color-text-secondary)]">
+            Showing all unallocated trades
+          </p>
+        )}
+      </div>
+
+      {/* Allocated Trades */}
+      <div>
+        <h3 className="mb-2 text-sm font-semibold text-[var(--color-text)]">
+          Allocated Trades
+        </h3>
+        <DataTable
+          columns={columns}
+          data={allocatedRows}
+          loading={isLoading}
+          compact
+          paginate
+          pageSize={100}
+          stickyHeader
+          maxHeight="calc(100vh - 420px)"
+          emptyMessage={
+            error
+              ? "Failed to load ledger data. Try syncing first."
+              : "No trades found. Click 'Sync PMX' to fetch trade data."
+          }
+          enableSorting={false}
+        />
+      </div>
     </PageShell>
   );
 }

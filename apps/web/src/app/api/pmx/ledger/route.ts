@@ -8,6 +8,7 @@ export async function GET(request: NextRequest) {
     const { searchParams } = new URL(request.url);
     const symbol = searchParams.get("symbol") || "";
     const tradeNum = searchParams.get("tradeNum") || "";
+    const narration = searchParams.get("narration") || "";
     const startDate = searchParams.get("startDate") || "";
     const endDate = searchParams.get("endDate") || "";
     const status = searchParams.get("status") || "";
@@ -26,6 +27,11 @@ export async function GET(request: NextRequest) {
     if (tradeNum) {
       conditions.push(`UPPER(COALESCE(order_id, '')) LIKE $${paramIdx++}`);
       params.push(`%${tradeNum.toUpperCase()}%`);
+    }
+
+    if (narration) {
+      conditions.push(`UPPER(COALESCE(narration, '')) LIKE $${paramIdx++}`);
+      params.push(`%${narration.toUpperCase()}%`);
     }
 
     if (startDate) {
