@@ -3,7 +3,7 @@
 import { useState, useCallback, useMemo } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { type ColumnDef } from "@tanstack/react-table";
-import { Download, FileText } from "lucide-react";
+import { Download, FileText, CheckCircle2, XCircle, RefreshCw, Loader2 } from "lucide-react";
 import { PageShell } from "@/components/layout/page-shell";
 import { DataTable, numCell, statusBadge } from "@/components/ui/data-table";
 import { fmt, fmtDate } from "@/lib/utils";
@@ -48,6 +48,14 @@ interface LedgerSummary {
   totalCreditUsd: number;
   totalDebitZar: number;
   totalCreditZar: number;
+  totalDebitXau: number;
+  totalCreditXau: number;
+  totalDebitXag: number;
+  totalCreditXag: number;
+  totalDebitXpt: number;
+  totalCreditXpt: number;
+  totalDebitXpd: number;
+  totalCreditXpd: number;
 }
 
 interface LedgerResponse {
@@ -73,6 +81,23 @@ interface PmxStatus {
   lastSync: string | null;
   latestTradeDate: string | null;
   symbolBreakdown: { symbol: string; count: number }[];
+}
+
+interface AuditCheck {
+  label: string;
+  localValue: string;
+  pmxValue: string;
+  pass: boolean;
+}
+
+interface AuditResponse {
+  ok: boolean;
+  allPass: boolean;
+  checks: AuditCheck[];
+  pmxTradeCount: number;
+  localTradeCount: number;
+  auditedAt: string;
+  error?: string;
 }
 
 // ── Filters ──
@@ -201,27 +226,121 @@ function EditableTradeNumber({
   );
 }
 
-// ── Summary Card ──
-function StatCard({
+// ── Summary Cards ──
+function BalanceCard({
   label,
-  value,
-  sub,
+  net,
+  debit,
+  credit,
+  unit,
+  decimals = 2,
 }: {
   label: string;
-  value: string | number;
-  sub?: string;
+  net: number;
+  debit: number;
+  credit: number;
+  unit: string;
+  decimals?: number;
 }) {
+  const fmtVal = (n: number) =>
+    n.toLocaleString("en-US", {
+      minimumFractionDigits: decimals,
+      maximumFractionDigits: decimals,
+    });
   return (
     <div className="rounded-xl border border-[var(--color-border)] bg-[var(--color-surface)] p-4">
       <div className="text-xs font-medium text-[var(--color-text-muted)] uppercase tracking-wider">
         {label}
       </div>
-      <div className="mt-1 text-xl font-semibold text-[var(--color-text-primary)]">
-        {value}
+      <div
+        className={`mt-1 text-xl font-semibold ${
+          net > 0.001 ? "num-positive" : net < -0.001 ? "num-negative" : "text-[var(--color-text-primary)]"
+        }`}
+      >
+        {fmtVal(net)} {unit}
       </div>
-      {sub && (
-        <div className="mt-0.5 text-xs text-[var(--color-text-secondary)]">
-          {sub}
+      <div className="mt-0.5 text-xs text-[var(--color-text-secondary)]">
+        Debit: {fmtVal(debit)} | Credit: {fmtVal(credit)}
+      </div>
+    </div>
+  );
+}
+
+function AuditCard({
+  checks,
+  loading,
+  error,
+  onRefresh,
+  auditedAt,
+}: {
+  checks: AuditCheck[] | null;
+  loading: boolean;
+  error: string | null;
+  onRefresh: () => void;
+  auditedAt: string | null;
+}) {
+  return (
+    <div className="rounded-xl border border-[var(--color-border)] bg-[var(--color-surface)] p-4 col-span-2 sm:col-span-1">
+      <div className="flex items-center justify-between mb-2">
+        <div className="text-xs font-medium text-[var(--color-text-muted)] uppercase tracking-wider">
+          System Audit
+        </div>
+        <button
+          onClick={onRefresh}
+          disabled={loading}
+          className="p-1 rounded hover:bg-[var(--color-background)] transition-colors disabled:opacity-50"
+          title="Run audit"
+        >
+          {loading ? (
+            <Loader2 className="h-3.5 w-3.5 animate-spin text-[var(--color-text-muted)]" />
+          ) : (
+            <RefreshCw className="h-3.5 w-3.5 text-[var(--color-text-muted)]" />
+          )}
+        </button>
+      </div>
+
+      {error && (
+        <div className="text-xs text-red-500 mb-1">{error}</div>
+      )}
+
+      {!checks && !loading && !error && (
+        <div className="text-xs text-[var(--color-text-secondary)] italic">
+          Click refresh to run audit
+        </div>
+      )}
+
+      {loading && !checks && (
+        <div className="text-xs text-[var(--color-text-secondary)] italic">
+          Fetching from PMX API...
+        </div>
+      )}
+
+      {checks && (
+        <div className="space-y-0.5">
+          {checks.map((check) => (
+            <div key={check.label} className="flex items-center gap-1.5 text-xs">
+              {check.pass ? (
+                <CheckCircle2 className="h-3.5 w-3.5 text-green-500 flex-shrink-0" />
+              ) : (
+                <XCircle className="h-3.5 w-3.5 text-red-500 flex-shrink-0" />
+              )}
+              <span className="text-[var(--color-text-secondary)]">{check.label}:</span>
+              <span className={`font-medium ${check.pass ? "text-green-600" : "text-red-600"}`}>
+                {check.localValue}
+              </span>
+              {!check.pass && (
+                <span className="text-[var(--color-text-muted)]">
+                  (PMX: {check.pmxValue})
+                </span>
+              )}
+            </div>
+          ))}
+        </div>
+      )}
+
+      {auditedAt && (
+        <div className="mt-1.5 text-[10px] text-[var(--color-text-muted)]">
+          Last audit: {new Date(auditedAt).toLocaleTimeString()}
         </div>
       )}
     </div>
@@ -276,6 +395,23 @@ export default function PmxLedgerPage() {
       return resp.json();
     },
     staleTime: 30_000,
+  });
+
+  // Audit query (manual trigger only)
+  const {
+    data: auditData,
+    isLoading: auditLoading,
+    error: auditError,
+    refetch: runAudit,
+  } = useQuery<AuditResponse>({
+    queryKey: ["pmx-audit"],
+    queryFn: async () => {
+      const resp = await fetch("/api/pmx/audit");
+      if (!resp.ok) throw new Error("Audit request failed");
+      return resp.json();
+    },
+    enabled: false, // Manual trigger only
+    staleTime: 5 * 60_000, // 5 min cache
   });
 
   // Sync mutation
@@ -570,26 +706,59 @@ export default function PmxLedgerPage() {
 
       {/* Summary cards */}
       {summary && (
-        <div className="grid grid-cols-2 gap-4 sm:grid-cols-4">
-          <StatCard
-            label="Total Trades"
-            value={summary.totalTrades}
-            sub={`${summary.openTrades} open, ${summary.closedTrades} closed`}
-          />
-          <StatCard
-            label="DB Records"
-            value={pmxStatus?.tradeCount ?? "-"}
-            sub={pmxStatus?.lastSync ? `Last sync: ${new Date(pmxStatus.lastSync).toLocaleDateString()}` : "Never synced"}
-          />
-          <StatCard
+        <div className="grid grid-cols-2 gap-4 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-7">
+          <BalanceCard
             label="Net USD"
-            value={fmt(summary.totalCreditUsd - summary.totalDebitUsd)}
-            sub={`Debit: ${fmt(summary.totalDebitUsd)} | Credit: ${fmt(summary.totalCreditUsd)}`}
+            net={summary.totalCreditUsd - summary.totalDebitUsd}
+            debit={summary.totalDebitUsd}
+            credit={summary.totalCreditUsd}
+            unit="$"
           />
-          <StatCard
+          <BalanceCard
             label="Net ZAR"
-            value={fmt(summary.totalCreditZar - summary.totalDebitZar)}
-            sub={`Debit: ${fmt(summary.totalDebitZar)} | Credit: ${fmt(summary.totalCreditZar)}`}
+            net={summary.totalCreditZar - summary.totalDebitZar}
+            debit={summary.totalDebitZar}
+            credit={summary.totalCreditZar}
+            unit="R"
+          />
+          <BalanceCard
+            label="Net Gold"
+            net={summary.totalCreditXau - summary.totalDebitXau}
+            debit={summary.totalDebitXau}
+            credit={summary.totalCreditXau}
+            unit="oz"
+            decimals={3}
+          />
+          <BalanceCard
+            label="Net Silver"
+            net={summary.totalCreditXag - summary.totalDebitXag}
+            debit={summary.totalDebitXag}
+            credit={summary.totalCreditXag}
+            unit="oz"
+            decimals={3}
+          />
+          <BalanceCard
+            label="Net Platinum"
+            net={summary.totalCreditXpt - summary.totalDebitXpt}
+            debit={summary.totalDebitXpt}
+            credit={summary.totalCreditXpt}
+            unit="oz"
+            decimals={3}
+          />
+          <BalanceCard
+            label="Net Palladium"
+            net={summary.totalCreditXpd - summary.totalDebitXpd}
+            debit={summary.totalDebitXpd}
+            credit={summary.totalCreditXpd}
+            unit="oz"
+            decimals={3}
+          />
+          <AuditCard
+            checks={auditData?.checks ?? null}
+            loading={auditLoading}
+            error={auditError ? (auditError as Error).message : (auditData?.error ?? null)}
+            onRefresh={() => runAudit()}
+            auditedAt={auditData?.auditedAt ?? null}
           />
         </div>
       )}

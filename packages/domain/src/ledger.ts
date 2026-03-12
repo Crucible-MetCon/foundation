@@ -66,6 +66,15 @@ export interface LedgerSummary {
   totalCreditUsd: number;
   totalDebitZar: number;
   totalCreditZar: number;
+  // Per-metal debit/credit in troy ounces
+  totalDebitXau: number;
+  totalCreditXau: number;
+  totalDebitXag: number;
+  totalCreditXag: number;
+  totalDebitXpt: number;
+  totalCreditXpt: number;
+  totalDebitXpd: number;
+  totalCreditXpd: number;
 }
 
 function splitSymbol(sym: string): { base: string; quote: string } {
@@ -227,6 +236,11 @@ export function computeLedgerSummary(rows: LedgerRow[]): LedgerSummary {
   const openKeys = new Set<string>();
   let totalDebitUsd = 0, totalCreditUsd = 0;
   let totalDebitZar = 0, totalCreditZar = 0;
+  // Per-metal debit/credit (oz)
+  let totalDebitXau = 0, totalCreditXau = 0;
+  let totalDebitXag = 0, totalCreditXag = 0;
+  let totalDebitXpt = 0, totalCreditXpt = 0;
+  let totalDebitXpd = 0, totalCreditXpd = 0;
 
   for (const row of rows) {
     const key = row.tradeNumber || row.docNumber || `__id_${row.id}`;
@@ -236,6 +250,25 @@ export function computeLedgerSummary(rows: LedgerRow[]): LedgerSummary {
     totalCreditUsd += row.creditUsd;
     totalDebitZar += row.debitZar;
     totalCreditZar += row.creditZar;
+
+    // Accumulate per-metal debit/credit
+    const { base } = splitSymbol(row.symbol);
+    const isMetal = ["XAU", "XAG", "XPT", "XPD"].includes(base);
+    if (isMetal) {
+      if (row.side === "BUY") {
+        // BUY = receive metal = credit
+        if (base === "XAU") totalCreditXau += row.quantity;
+        else if (base === "XAG") totalCreditXag += row.quantity;
+        else if (base === "XPT") totalCreditXpt += row.quantity;
+        else if (base === "XPD") totalCreditXpd += row.quantity;
+      } else {
+        // SELL = deliver metal = debit
+        if (base === "XAU") totalDebitXau += row.quantity;
+        else if (base === "XAG") totalDebitXag += row.quantity;
+        else if (base === "XPT") totalDebitXpt += row.quantity;
+        else if (base === "XPD") totalDebitXpd += row.quantity;
+      }
+    }
   }
 
   return {
@@ -246,6 +279,14 @@ export function computeLedgerSummary(rows: LedgerRow[]): LedgerSummary {
     totalCreditUsd,
     totalDebitZar,
     totalCreditZar,
+    totalDebitXau,
+    totalCreditXau,
+    totalDebitXag,
+    totalCreditXag,
+    totalDebitXpt,
+    totalCreditXpt,
+    totalDebitXpd,
+    totalCreditXpd,
   };
 }
 
