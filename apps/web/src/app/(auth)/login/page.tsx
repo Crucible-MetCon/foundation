@@ -29,7 +29,7 @@ export default function LoginPage() {
         return;
       }
 
-      router.push("/pmx-ledger");
+      router.push("/dashboard");
       router.refresh();
     } catch {
       setError("Unable to connect to server");
@@ -52,7 +52,7 @@ export default function LoginPage() {
             Foundation
           </h1>
           <p className="mt-1 text-sm text-[var(--color-text-secondary)]">
-            FX & Gold Hedging Platform
+            FX & Metal Hedging Platform
           </p>
         </div>
 

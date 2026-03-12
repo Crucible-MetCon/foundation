@@ -90,7 +90,7 @@ export function Sidebar({ user }: SidebarProps) {
         <div>
           <h1 className="text-sm font-semibold text-white">Foundation</h1>
           <p className="text-xs text-[var(--color-sidebar-text)]">
-            FX & Gold Hedging
+            FX & Metal Hedging
           </p>
         </div>
       </div>

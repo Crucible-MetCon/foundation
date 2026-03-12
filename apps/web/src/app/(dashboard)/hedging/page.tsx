@@ -228,7 +228,7 @@ export default function HedgingPage() {
 
   return (
     <PageShell
-      title="Gold Hedging"
+      title="Metal Hedging"
       description="Compare TradeMC metal bookings against PMX hedge trades."
       actions={
         <button

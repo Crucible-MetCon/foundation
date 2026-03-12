@@ -16,7 +16,7 @@ const pageTitles: Record<string, string> = {
   "/pmx-ledger": "PMX Ledger",
   "/open-positions": "Open Positions & Revaluation",
   "/forward-exposure": "Forward Exposure",
-  "/hedging": "Gold Hedging",
+  "/hedging": "Metal Hedging",
   "/profit": "Profit Report",
   "/trademc": "TradeMC Trades",
   "/weight-transactions": "Weight Transactions",

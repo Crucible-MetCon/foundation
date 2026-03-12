@@ -4,9 +4,9 @@ import { Providers } from "./providers";
 import "./globals.css";
 
 export const metadata: Metadata = {
-  title: "Foundation - FX & Gold Hedging",
+  title: "Foundation - FX & Metal Hedging",
   description:
-    "FX & Gold Hedging Platform - Metal Concentrators SA",
+    "FX & Metal Hedging Platform - Metal Concentrators SA",
   icons: {
     icon: "/favicon.svg",
   },
