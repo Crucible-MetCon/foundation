@@ -1,6 +1,7 @@
 [build]
 builder = "DOCKERFILE"
 dockerfilePath = "Dockerfile"
+watchPatterns = ["apps/web/**", "packages/**", "Dockerfile", "pnpm-lock.yaml"]
 
 [deploy]
 # No startCommand — use the Dockerfile CMD (node apps/web/server.js)
