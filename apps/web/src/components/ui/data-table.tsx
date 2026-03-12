@@ -13,7 +13,7 @@ import {
   type VisibilityState,
   type Row,
 } from "@tanstack/react-table";
-import { useState, useMemo, type ReactNode } from "react";
+import { useState, useEffect, useMemo, type ReactNode } from "react";
 
 // ── Icons ──
 function SortAscIcon() {
@@ -90,6 +90,8 @@ interface DataTableProps<TData> {
   maxHeight?: string;
   /** Enable column sorting (default: true) */
   enableSorting?: boolean;
+  /** Initial column visibility state */
+  initialColumnVisibility?: VisibilityState;
 }
 
 export function DataTable<TData>({
@@ -110,11 +112,21 @@ export function DataTable<TData>({
   stickyHeader = false,
   maxHeight,
   enableSorting: enableSortingProp = true,
+  initialColumnVisibility,
 }: DataTableProps<TData>) {
   const [sorting, setSorting] = useState<SortingState>(initialSorting);
   const [columnFilters, setColumnFilters] = useState<ColumnFiltersState>([]);
-  const [columnVisibility, setColumnVisibility] = useState<VisibilityState>({});
+  const [columnVisibility, setColumnVisibility] = useState<VisibilityState>(
+    initialColumnVisibility ?? {}
+  );
   const [globalFilter, setGlobalFilter] = useState("");
+
+  // Sync column visibility when settings change externally
+  useEffect(() => {
+    if (initialColumnVisibility) {
+      setColumnVisibility(initialColumnVisibility);
+    }
+  }, [initialColumnVisibility]);
 
   const table = useReactTable({
     data,
@@ -181,33 +193,36 @@ export function DataTable<TData>({
           <thead className={stickyHeader ? "sticky top-0 z-10" : ""}>
             {table.getHeaderGroups().map((headerGroup) => (
               <tr key={headerGroup.id} className="border-b border-[var(--color-border)] bg-[var(--color-background)]">
-                {headerGroup.headers.map((header) => (
-                  <th
-                    key={header.id}
-                    className={`${cellPadding} ${fontSize} text-left font-medium text-[var(--color-text-secondary)] whitespace-nowrap select-none ${
-                      header.column.getCanSort() ? "cursor-pointer hover:text-[var(--color-text-primary)]" : ""
-                    }`}
-                    onClick={header.column.getToggleSortingHandler()}
-                    style={{ width: header.getSize() !== 150 ? header.getSize() : undefined }}
-                  >
-                    <div className="flex items-center gap-1">
-                      {header.isPlaceholder
-                        ? null
-                        : flexRender(header.column.columnDef.header, header.getContext())}
-                      {header.column.getCanSort() && (
-                        <span className="inline-flex">
-                          {header.column.getIsSorted() === "asc" ? (
-                            <SortAscIcon />
-                          ) : header.column.getIsSorted() === "desc" ? (
-                            <SortDescIcon />
-                          ) : (
-                            <SortNeutralIcon />
-                          )}
-                        </span>
-                      )}
-                    </div>
-                  </th>
-                ))}
+                {headerGroup.headers.map((header) => {
+                  const isRight = (header.column.columnDef.meta as any)?.align === "right";
+                  return (
+                    <th
+                      key={header.id}
+                      className={`${cellPadding} ${fontSize} ${isRight ? "text-right" : "text-left"} font-medium text-[var(--color-text-secondary)] whitespace-nowrap select-none ${
+                        header.column.getCanSort() ? "cursor-pointer hover:text-[var(--color-text-primary)]" : ""
+                      }`}
+                      onClick={header.column.getToggleSortingHandler()}
+                      style={{ width: header.getSize() !== 150 ? header.getSize() : undefined }}
+                    >
+                      <div className={`flex items-center gap-1 ${isRight ? "justify-end" : ""}`}>
+                        {header.isPlaceholder
+                          ? null
+                          : flexRender(header.column.columnDef.header, header.getContext())}
+                        {header.column.getCanSort() && (
+                          <span className="inline-flex">
+                            {header.column.getIsSorted() === "asc" ? (
+                              <SortAscIcon />
+                            ) : header.column.getIsSorted() === "desc" ? (
+                              <SortDescIcon />
+                            ) : (
+                              <SortNeutralIcon />
+                            )}
+                          </span>
+                        )}
+                      </div>
+                    </th>
+                  );
+                })}
               </tr>
             ))}
           </thead>
@@ -236,14 +251,19 @@ export function DataTable<TData>({
                   } ${rowClassName ? rowClassName(row.original) : ""}`}
                   onClick={onRowClick ? () => onRowClick(row.original) : undefined}
                 >
-                  {row.getVisibleCells().map((cell) => (
-                    <td
-                      key={cell.id}
-                      className={`${cellPadding} ${fontSize} text-[var(--color-text-primary)] whitespace-nowrap`}
-                    >
-                      {flexRender(cell.column.columnDef.cell, cell.getContext())}
-                    </td>
-                  ))}
+                  {row.getVisibleCells().map((cell) => {
+                    const isRight = (cell.column.columnDef.meta as any)?.align === "right";
+                    return (
+                      <td
+                        key={cell.id}
+                        className={`${cellPadding} ${fontSize} text-[var(--color-text-primary)] whitespace-nowrap ${
+                          isRight ? "text-right tabular-nums" : ""
+                        }`}
+                      >
+                        {flexRender(cell.column.columnDef.cell, cell.getContext())}
+                      </td>
+                    );
+                  })}
                 </tr>
               ))
             )}

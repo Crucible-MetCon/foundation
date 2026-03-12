@@ -8,6 +8,8 @@ import { PageShell } from "@/components/layout/page-shell";
 import { DataTable, numCell, statusBadge } from "@/components/ui/data-table";
 import { fmt, fmtDate } from "@/lib/utils";
 import { downloadCSV, downloadPDF } from "@/lib/export-utils";
+import { useSettings } from "@/contexts/settings-context";
+import { type VisibilityState } from "@tanstack/react-table";
 
 // ── Types ──
 interface LedgerRow {
@@ -36,6 +38,14 @@ interface LedgerRow {
   netXptGrams: number;
   netXpdOz: number;
   netXpdGrams: number;
+  tradeXauOz: number;
+  tradeXauGrams: number;
+  tradeXagOz: number;
+  tradeXagGrams: number;
+  tradeXptOz: number;
+  tradeXptGrams: number;
+  tradeXpdOz: number;
+  tradeXpdGrams: number;
   traderName: string;
   status: "Open" | "Closed";
 }
@@ -296,6 +306,7 @@ function BalanceCard({
 // ── Page Component ──
 export default function PmxLedgerPage() {
   const queryClient = useQueryClient();
+  const { settings } = useSettings();
   const [metalUnit, setMetalUnit] = useState<"oz" | "g">("oz");
   const [filters, setFilters] = useState<Filters>({
     symbol: "All",
@@ -408,6 +419,17 @@ export default function PmxLedgerPage() {
     );
   }, [ledgerData]);
 
+  // Build column visibility from settings
+  const columnVisibility = useMemo<VisibilityState>(() => {
+    const vis: VisibilityState = {};
+    for (const key of settings.hiddenColumns) {
+      vis[key] = false;
+    }
+    return vis;
+  }, [settings.hiddenColumns]);
+
+  const { decimals } = settings;
+
   // Table columns
   const columns = useMemo<ColumnDef<LedgerRow, any>[]>(
     () => [
@@ -494,23 +516,26 @@ export default function PmxLedgerPage() {
         accessorKey: "debitUsd",
         header: "Debit $",
         size: 110,
-        cell: ({ getValue }) => numCell(getValue() as number),
+        meta: { align: "right" },
+        cell: ({ getValue }) => numCell(getValue() as number, decimals.balance),
       },
       {
         accessorKey: "creditUsd",
         header: "Credit $",
         size: 110,
-        cell: ({ getValue }) => numCell(getValue() as number),
+        meta: { align: "right" },
+        cell: ({ getValue }) => numCell(getValue() as number, decimals.balance),
       },
       {
         accessorKey: "balanceUsd",
         header: "Balance $",
         size: 110,
+        meta: { align: "right" },
         cell: ({ getValue }) => {
           const val = getValue() as number;
           return (
             <span className={`font-semibold ${val > 0.01 ? "num-positive" : val < -0.01 ? "num-negative" : "num-neutral"}`}>
-              {Math.abs(val) < 0.01 ? "-" : fmt(val)}
+              {Math.abs(val) < 0.01 ? "-" : fmt(val, decimals.balance)}
             </span>
           );
         },
@@ -519,28 +544,31 @@ export default function PmxLedgerPage() {
         accessorKey: "debitZar",
         header: "Debit ZAR",
         size: 120,
-        cell: ({ getValue }) => numCell(getValue() as number),
+        meta: { align: "right" },
+        cell: ({ getValue }) => numCell(getValue() as number, decimals.balance),
       },
       {
         accessorKey: "creditZar",
         header: "Credit ZAR",
         size: 120,
-        cell: ({ getValue }) => numCell(getValue() as number),
+        meta: { align: "right" },
+        cell: ({ getValue }) => numCell(getValue() as number, decimals.balance),
       },
       {
         accessorKey: "balanceZar",
         header: "Balance ZAR",
         size: 120,
+        meta: { align: "right" },
         cell: ({ getValue }) => {
           const val = getValue() as number;
           return (
             <span className={`font-semibold ${val > 0.01 ? "num-positive" : val < -0.01 ? "num-negative" : "num-neutral"}`}>
-              {Math.abs(val) < 0.01 ? "-" : fmt(val)}
+              {Math.abs(val) < 0.01 ? "-" : fmt(val, decimals.balance)}
             </span>
           );
         },
       },
-      // Per-metal running balance columns (unit toggleable via metalUnit state)
+      // Per-trade metal quantity columns (unit toggleable via metalUnit state)
       ...[
         { base: "Xau", label: "Au" },
         { base: "Xag", label: "Ag" },
@@ -548,19 +576,20 @@ export default function PmxLedgerPage() {
         { base: "Xpd", label: "Pd" },
       ].map(({ base, label }) => {
         const isOz = metalUnit === "oz";
-        const key = isOz ? `net${base}Oz` : `net${base}Grams`;
-        const decimals = isOz ? 3 : 2;
+        const key = isOz ? `trade${base}Oz` : `trade${base}Grams`;
+        const metalDecimals = decimals.weight;
         const threshold = isOz ? 0.0001 : 0.01;
         return {
           accessorKey: key,
-          header: `Net ${label} ${isOz ? "OZ" : "G"}`,
+          header: `${label} ${isOz ? "OZ" : "G"}`,
           size: 90,
+          meta: { align: "right" as const },
           cell: ({ getValue }: { getValue: () => unknown }) => {
             const val = getValue() as number;
             if (Math.abs(val) < threshold) return <span className="num-neutral">-</span>;
             return (
               <span className={`font-semibold ${val > 0 ? "num-positive" : "num-negative"}`}>
-                {val.toLocaleString("en-US", { minimumFractionDigits: decimals, maximumFractionDigits: decimals })}
+                {val.toLocaleString("en-US", { minimumFractionDigits: metalDecimals, maximumFractionDigits: metalDecimals })}
               </span>
             );
           },
@@ -584,7 +613,7 @@ export default function PmxLedgerPage() {
         },
       },
     ],
-    [metalUnit]
+    [metalUnit, decimals]
   );
 
   const summary = ledgerData?.summary;
@@ -917,6 +946,7 @@ export default function PmxLedgerPage() {
           paginate={false}
           enableSorting={false}
           emptyMessage="No unallocated trades"
+          initialColumnVisibility={columnVisibility}
         />
         {!isLoading && (
           <p className="mt-1 text-center text-xs text-[var(--color-text-secondary)]">
@@ -945,6 +975,7 @@ export default function PmxLedgerPage() {
               : "No trades found. Click 'Sync PMX' to fetch trade data."
           }
           enableSorting={false}
+          initialColumnVisibility={columnVisibility}
         />
       </div>
     </PageShell>

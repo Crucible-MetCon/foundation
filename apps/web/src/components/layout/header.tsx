@@ -1,7 +1,8 @@
 "use client";
 
+import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { LogOut } from "lucide-react";
+import { LogOut, Settings } from "lucide-react";
 
 interface HeaderProps {
   user: {
@@ -30,6 +31,13 @@ export function Header({ user }: HeaderProps) {
             {user.role}
           </p>
         </div>
+        <Link
+          href="/settings"
+          className="flex h-9 w-9 items-center justify-center rounded-lg text-[var(--color-text-muted)] transition-colors hover:bg-[var(--color-background)] hover:text-[var(--color-text-primary)]"
+          title="Settings"
+        >
+          <Settings className="h-4 w-4" />
+        </Link>
         <button
           onClick={handleLogout}
           className="flex h-9 w-9 items-center justify-center rounded-lg text-[var(--color-text-muted)] transition-colors hover:bg-[var(--color-danger-light)] hover:text-[var(--color-danger)]"

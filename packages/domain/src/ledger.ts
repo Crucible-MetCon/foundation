@@ -54,6 +54,15 @@ export interface LedgerRow {
   netXptGrams: number;
   netXpdOz: number;
   netXpdGrams: number;
+  // Per-trade metal quantity (not cumulative)
+  tradeXauOz: number;
+  tradeXauGrams: number;
+  tradeXagOz: number;
+  tradeXagGrams: number;
+  tradeXptOz: number;
+  tradeXptGrams: number;
+  tradeXpdOz: number;
+  tradeXpdGrams: number;
   traderName: string;
   status: "Open" | "Closed";
 }
@@ -158,6 +167,12 @@ export function buildLedger(trades: RawTradeRow[]): LedgerRow[] {
     else if (base === "XPT") runningXpt += netMetal;
     else if (base === "XPD") runningXpd += netMetal;
 
+    // Per-trade metal quantity (positive = received, negative = delivered)
+    let tradeMetalOz = 0;
+    if (isMetal) {
+      tradeMetalOz = isBuy ? qty : -qty;
+    }
+
     // Auto-generate narration if empty
     let narration = t.narration?.trim() || "";
     if (!narration) {
@@ -197,6 +212,15 @@ export function buildLedger(trades: RawTradeRow[]): LedgerRow[] {
       netXptGrams: runningXpt * GRAMS_PER_TROY_OUNCE,
       netXpdOz: runningXpd,
       netXpdGrams: runningXpd * GRAMS_PER_TROY_OUNCE,
+      // Per-trade metal quantities
+      tradeXauOz: base === "XAU" ? tradeMetalOz : 0,
+      tradeXauGrams: base === "XAU" ? tradeMetalOz * GRAMS_PER_TROY_OUNCE : 0,
+      tradeXagOz: base === "XAG" ? tradeMetalOz : 0,
+      tradeXagGrams: base === "XAG" ? tradeMetalOz * GRAMS_PER_TROY_OUNCE : 0,
+      tradeXptOz: base === "XPT" ? tradeMetalOz : 0,
+      tradeXptGrams: base === "XPT" ? tradeMetalOz * GRAMS_PER_TROY_OUNCE : 0,
+      tradeXpdOz: base === "XPD" ? tradeMetalOz : 0,
+      tradeXpdGrams: base === "XPD" ? tradeMetalOz * GRAMS_PER_TROY_OUNCE : 0,
       traderName: t.traderName?.trim() || "",
       status: "Open", // Will be set after all rows are processed
     };
