@@ -41,12 +41,13 @@ export default function LoginPage() {
   return (
     <div className="flex min-h-screen items-center justify-center bg-[var(--color-background)]">
       <div className="w-full max-w-md">
-        {/* Logo - MC Monogram */}
+        {/* Logo */}
         <div className="mb-8 text-center">
-          <div className="mx-auto mb-4 flex items-baseline justify-center">
-            <span className="text-5xl font-bold tracking-tight text-[var(--color-text-primary)]" style={{ fontFamily: "var(--font-serif)" }}>MC</span>
-            <span className="ml-1 inline-block h-3.5 w-3.5 rounded-sm bg-[var(--color-primary)]" />
-          </div>
+          <img
+            src="/logo-light.png"
+            alt="Metal Concentrators"
+            className="mx-auto mb-4 h-16"
+          />
           <h1 className="text-lg font-semibold uppercase tracking-[0.25em] text-[var(--color-text-primary)]">
             Foundation
           </h1>
