@@ -1,24 +1,41 @@
 "use client";
 
 import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { RefreshCw, Scale, DollarSign, Landmark } from "lucide-react";
+import { RefreshCw, Scale, DollarSign, Landmark, Gem, CircleDot, Hexagon } from "lucide-react";
 import { PageShell } from "@/components/layout/page-shell";
 import { fmt, fmtDate } from "@/lib/utils";
 
 // ── Types ──
 
+interface MetalBalance {
+  balanceOz: number;
+  balanceG: number;
+  label: string;
+}
+
+interface CurrencyBalance {
+  balance: number;
+  label: string;
+}
+
 interface BalancesResponse {
   ok: boolean;
   balances: {
-    xau: { balanceOz: number; balanceG: number; label: string };
-    usd: { balance: number; label: string };
-    zar: { balance: number; label: string };
+    xau: MetalBalance;
+    xag: MetalBalance;
+    xpt: MetalBalance;
+    xpd: MetalBalance;
+    usd: CurrencyBalance;
+    zar: CurrencyBalance;
   };
   stats: {
     totalTrades: number;
     uniqueTrades: number;
     lastTradeDate: string | null;
     xauTradeCount: number;
+    xagTradeCount: number;
+    xptTradeCount: number;
+    xpdTradeCount: number;
     fxTradeCount: number;
     openPositions: number;
     closedPositions: number;
@@ -63,7 +80,54 @@ function StatCard({
   );
 }
 
-// ── Skeleton loader for balance cards ──
+// ── Metal Balance Card ──
+
+function MetalCard({
+  metal,
+  badge,
+  icon: Icon,
+  iconColor,
+  badgeBg,
+  badgeText,
+  iconBg,
+}: {
+  metal: MetalBalance;
+  badge: string;
+  icon: React.ComponentType<{ size: number; className?: string }>;
+  iconColor: string;
+  badgeBg: string;
+  badgeText: string;
+  iconBg: string;
+}) {
+  return (
+    <div className="relative rounded-2xl border border-[var(--color-border)] bg-[var(--color-surface)] p-6 overflow-hidden">
+      <span className={`absolute top-4 right-4 rounded-full px-2.5 py-0.5 text-xs font-semibold ${badgeBg} ${badgeText}`}>
+        {badge}
+      </span>
+      <div className="flex items-start gap-4">
+        <div className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-lg ${iconBg}`}>
+          <Icon size={20} className={iconColor} />
+        </div>
+        <div className="min-w-0">
+          <p className="text-xs font-medium text-[var(--color-text-secondary)]">
+            {metal.label}
+          </p>
+          <p className={`mt-1 text-3xl font-bold tabular-nums ${iconColor}`}>
+            {fmt(metal.balanceOz, 4)}
+            <span className={`ml-1.5 text-base font-medium opacity-70`}>
+              oz
+            </span>
+          </p>
+          <p className="mt-1 text-sm text-[var(--color-text-muted)] tabular-nums">
+            {fmt(metal.balanceG, 2)} g
+          </p>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// ── Skeleton loaders ──
 
 function BalanceCardSkeleton() {
   return (
@@ -110,7 +174,7 @@ export default function AccountBalancesPage() {
   return (
     <PageShell
       title="Account Balances"
-      description="Current PMX account holdings across XAU, USD, and ZAR."
+      description="Current PMX account holdings across metals, USD, and ZAR."
       actions={
         <button
           onClick={() =>
@@ -135,41 +199,63 @@ export default function AccountBalancesPage() {
         </div>
       )}
 
-      {/* ── Large Currency Balance Cards ── */}
+      {/* ── Metal Balance Cards ── */}
       {isLoading ? (
-        <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
+        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
+          <BalanceCardSkeleton />
           <BalanceCardSkeleton />
           <BalanceCardSkeleton />
           <BalanceCardSkeleton />
         </div>
       ) : balances ? (
-        <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
-          {/* Gold (XAU) */}
-          <div className="relative rounded-2xl border border-[var(--color-border)] bg-[var(--color-surface)] p-6 overflow-hidden">
-            <span className="absolute top-4 right-4 rounded-full bg-amber-100 px-2.5 py-0.5 text-xs font-semibold text-amber-700">
-              XAU
-            </span>
-            <div className="flex items-start gap-4">
-              <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-amber-100">
-                <Scale size={20} className="text-amber-600" />
-              </div>
-              <div className="min-w-0">
-                <p className="text-xs font-medium text-[var(--color-text-secondary)]">
-                  {balances.xau.label}
-                </p>
-                <p className="mt-1 text-3xl font-bold tabular-nums text-amber-600">
-                  {fmt(balances.xau.balanceOz, 4)}
-                  <span className="ml-1.5 text-base font-medium text-amber-500">
-                    oz
-                  </span>
-                </p>
-                <p className="mt-1 text-sm text-[var(--color-text-muted)] tabular-nums">
-                  {fmt(balances.xau.balanceG, 2)} g
-                </p>
-              </div>
-            </div>
-          </div>
+        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
+          <MetalCard
+            metal={balances.xau}
+            badge="XAU"
+            icon={Scale}
+            iconColor="text-amber-600"
+            badgeBg="bg-amber-100"
+            badgeText="text-amber-700"
+            iconBg="bg-amber-100"
+          />
+          <MetalCard
+            metal={balances.xag}
+            badge="XAG"
+            icon={Gem}
+            iconColor="text-slate-500"
+            badgeBg="bg-slate-100"
+            badgeText="text-slate-600"
+            iconBg="bg-slate-100"
+          />
+          <MetalCard
+            metal={balances.xpt}
+            badge="XPT"
+            icon={CircleDot}
+            iconColor="text-cyan-600"
+            badgeBg="bg-cyan-100"
+            badgeText="text-cyan-700"
+            iconBg="bg-cyan-100"
+          />
+          <MetalCard
+            metal={balances.xpd}
+            badge="XPD"
+            icon={Hexagon}
+            iconColor="text-rose-500"
+            badgeBg="bg-rose-100"
+            badgeText="text-rose-600"
+            iconBg="bg-rose-100"
+          />
+        </div>
+      ) : null}
 
+      {/* ── Currency Balance Cards ── */}
+      {isLoading ? (
+        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+          <BalanceCardSkeleton />
+          <BalanceCardSkeleton />
+        </div>
+      ) : balances ? (
+        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
           {/* US Dollar (USD) */}
           <div className="relative rounded-2xl border border-[var(--color-border)] bg-[var(--color-surface)] p-6 overflow-hidden">
             <span className="absolute top-4 right-4 rounded-full bg-green-100 px-2.5 py-0.5 text-xs font-semibold text-green-700">
@@ -272,15 +358,28 @@ export default function AccountBalancesPage() {
           </div>
           <div className="h-4 w-px bg-[var(--color-border)]" />
           <div className="flex items-center gap-2 text-sm text-[var(--color-text-secondary)]">
-            <span className="font-medium text-[var(--color-text-primary)]">
-              XAU Trades:
-            </span>
+            <span className="font-medium text-amber-600">XAU:</span>
             {stats.xauTradeCount.toLocaleString()}
           </div>
           <div className="h-4 w-px bg-[var(--color-border)]" />
           <div className="flex items-center gap-2 text-sm text-[var(--color-text-secondary)]">
+            <span className="font-medium text-slate-500">XAG:</span>
+            {stats.xagTradeCount.toLocaleString()}
+          </div>
+          <div className="h-4 w-px bg-[var(--color-border)]" />
+          <div className="flex items-center gap-2 text-sm text-[var(--color-text-secondary)]">
+            <span className="font-medium text-cyan-600">XPT:</span>
+            {stats.xptTradeCount.toLocaleString()}
+          </div>
+          <div className="h-4 w-px bg-[var(--color-border)]" />
+          <div className="flex items-center gap-2 text-sm text-[var(--color-text-secondary)]">
+            <span className="font-medium text-rose-500">XPD:</span>
+            {stats.xpdTradeCount.toLocaleString()}
+          </div>
+          <div className="h-4 w-px bg-[var(--color-border)]" />
+          <div className="flex items-center gap-2 text-sm text-[var(--color-text-secondary)]">
             <span className="font-medium text-[var(--color-text-primary)]">
-              FX Trades:
+              FX:
             </span>
             {stats.fxTradeCount.toLocaleString()}
           </div>
