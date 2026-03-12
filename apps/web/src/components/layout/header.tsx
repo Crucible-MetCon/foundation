@@ -1,6 +1,6 @@
 "use client";
 
-import { usePathname, useRouter } from "next/navigation";
+import { useRouter } from "next/navigation";
 import { LogOut } from "lucide-react";
 
 interface HeaderProps {
@@ -10,27 +10,8 @@ interface HeaderProps {
   };
 }
 
-const pageTitles: Record<string, string> = {
-  "/dashboard": "Dashboard",
-  "/account-balances": "Account Balances",
-  "/pmx-ledger": "PMX Ledger",
-  "/open-positions": "Open Positions & Revaluation",
-  "/forward-exposure": "Forward Exposure",
-  "/hedging": "Metal Hedging",
-  "/profit": "Profit Report",
-  "/trademc": "TradeMC Trades",
-  "/weight-transactions": "Weight Transactions",
-  "/suppliers": "Supplier Balances",
-  "/trading-ticket": "Trading Ticket",
-  "/reconciliation": "Account Reconciliation",
-  "/export-trades": "Export Trades",
-  "/admin/users": "User Management",
-};
-
 export function Header({ user }: HeaderProps) {
-  const pathname = usePathname();
   const router = useRouter();
-  const title = pageTitles[pathname] || "Dashboard";
 
   async function handleLogout() {
     await fetch("/api/auth/logout", { method: "POST" });
@@ -39,11 +20,7 @@ export function Header({ user }: HeaderProps) {
   }
 
   return (
-    <header className="flex h-16 items-center justify-between border-b border-[var(--color-border)] bg-[var(--color-surface)] px-6">
-      <h2 className="text-lg font-semibold text-[var(--color-text-primary)]">
-        {title}
-      </h2>
-
+    <header className="flex h-12 items-center justify-end border-b border-[var(--color-border)] bg-[var(--color-surface)] px-6">
       <div className="flex items-center gap-4">
         <div className="text-right">
           <p className="text-sm font-medium text-[var(--color-text-primary)]">

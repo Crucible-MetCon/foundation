@@ -74,7 +74,7 @@ export async function POST(request: NextRequest) {
             evo_exported, synced_at)
           VALUES (${t.id}, ${t.status}, ${t.company_id}, ${t.weight},
             ${t.notes}, ${t.ref_number},
-            ${t.trade_timestamp ? new Date(t.trade_timestamp) : null},
+            ${t.trade_timestamp ? new Date(t.trade_timestamp).toISOString() : null},
             ${t.zar_per_troy_ounce}, ${t.zar_to_usd}, ${t.requested_zar_per_gram},
             ${t.zar_per_troy_ounce_confirmed}, ${t.zar_to_usd_confirmed},
             ${t.usd_per_troy_ounce_confirmed}, ${t.evo_exported || false}, NOW())
@@ -112,7 +112,7 @@ export async function POST(request: NextRequest) {
             VALUES (${w.id}, ${w.company_id}, ${w.trade_id}, ${w.type},
               ${w.weight}, ${w.gold_percentage}, ${w.rolling_balance},
               ${w.notes}, ${w.pc_code},
-              ${w.transaction_timestamp ? new Date(w.transaction_timestamp) : null},
+              ${w.transaction_timestamp ? new Date(w.transaction_timestamp).toISOString() : null},
               NOW())
             ON CONFLICT (directus_id) DO UPDATE SET
               company_id = EXCLUDED.company_id,

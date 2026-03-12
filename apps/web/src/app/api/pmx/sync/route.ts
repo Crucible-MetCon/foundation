@@ -108,8 +108,8 @@ export async function POST(request: NextRequest) {
             rest_trade_id, raw_payload, synced_at
           ) VALUES (
             ${mapped.docNumber},
-            ${mapped.tradeDate ? new Date(mapped.tradeDate) : null},
-            ${mapped.valueDate ? new Date(mapped.valueDate) : null},
+            ${mapped.tradeDate || null},
+            ${mapped.valueDate || null},
             ${mapped.symbol},
             ${mapped.side},
             ${mapped.quantity},
