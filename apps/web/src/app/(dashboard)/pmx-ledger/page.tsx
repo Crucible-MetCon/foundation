@@ -303,6 +303,30 @@ export default function PmxLedgerPage() {
         cell: ({ getValue }) => fmtDate(getValue() as string),
       },
       {
+        accessorKey: "symbol",
+        header: "Symbol",
+        size: 90,
+        cell: ({ getValue }) => {
+          const sym = (getValue() as string) || "";
+          // Format XAUUSD → XAU/USD
+          const formatted = sym.length === 6 ? `${sym.slice(0, 3)}/${sym.slice(3)}` : sym;
+          return <span className="font-mono text-xs">{formatted}</span>;
+        },
+      },
+      {
+        accessorKey: "side",
+        header: "Side",
+        size: 60,
+        cell: ({ getValue }) => {
+          const side = getValue() as string;
+          return (
+            <span className={`text-xs font-semibold ${side === "BUY" ? "num-positive" : "num-negative"}`}>
+              {side}
+            </span>
+          );
+        },
+      },
+      {
         accessorKey: "narration",
         header: "Narration",
         size: 280,
