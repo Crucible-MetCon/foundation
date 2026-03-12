@@ -3,9 +3,10 @@
  *
  * Builds a ledger view from raw PMX trades with:
  * - Debit/Credit computation per trade
- * - Running balance per trade number (grouped)
- * - Open/Closed status
+ * - Global running balance (USD, ZAR, Au) accumulated chronologically
+ * - Open/Closed status per trade key
  * - Narration auto-generation
+ * - Output sorted newest-first for display
  */
 
 import { GRAMS_PER_TROY_OUNCE } from "./currency";
@@ -80,17 +81,19 @@ function splitSymbol(sym: string): { base: string; quote: string } {
 export function buildLedger(trades: RawTradeRow[]): LedgerRow[] {
   if (!trades.length) return [];
 
-  // Sort by trade date, then value date, then id
+  // Sort chronologically: trade date → doc number (sequential within PMX) → id
   const sorted = [...trades].sort((a, b) => {
     const dateComp = a.tradeDate.localeCompare(b.tradeDate);
     if (dateComp !== 0) return dateComp;
-    const valComp = a.valueDate.localeCompare(b.valueDate);
-    if (valComp !== 0) return valComp;
+    const docComp = a.docNumber.localeCompare(b.docNumber);
+    if (docComp !== 0) return docComp;
     return a.id - b.id;
   });
 
-  // Running balance accumulators per trade key
-  const balances: Record<string, { usd: number; zar: number; xau: number }> = {};
+  // Global running balance accumulators (across all trades)
+  let runningUsd = 0;
+  let runningZar = 0;
+  let runningXau = 0;
 
   const rows: LedgerRow[] = sorted.map((t) => {
     const { base, quote } = splitSymbol(t.symbol);
@@ -122,23 +125,15 @@ export function buildLedger(trades: RawTradeRow[]): LedgerRow[] {
       }
     }
 
-    // Trade key: orderId (trade #) > docNumber > row index
-    const tradeKey = t.orderId?.trim() || t.docNumber?.trim() || `__id_${t.id}`;
-
-    // Initialize balance for this key if new
-    if (!balances[tradeKey]) {
-      balances[tradeKey] = { usd: 0, zar: 0, xau: 0 };
-    }
-
     // Net differences
     const netUsd = creditUsd - debitUsd;
     const netZar = creditZar - debitZar;
     const netXau = creditXau - debitXau;
 
-    // Accumulate
-    balances[tradeKey].usd += netUsd;
-    balances[tradeKey].zar += netZar;
-    balances[tradeKey].xau += netXau;
+    // Accumulate into global running balance
+    runningUsd += netUsd;
+    runningZar += netZar;
+    runningXau += netXau;
 
     // Auto-generate narration if empty
     let narration = t.narration?.trim() || "";
@@ -167,27 +162,30 @@ export function buildLedger(trades: RawTradeRow[]): LedgerRow[] {
       narration,
       debitUsd,
       creditUsd,
-      balanceUsd: balances[tradeKey].usd,
+      balanceUsd: runningUsd,
       debitZar,
       creditZar,
-      balanceZar: balances[tradeKey].zar,
-      netXauOz: balances[tradeKey].xau,
-      netXauGrams: balances[tradeKey].xau * GRAMS_PER_TROY_OUNCE,
+      balanceZar: runningZar,
+      netXauOz: runningXau,
+      netXauGrams: runningXau * GRAMS_PER_TROY_OUNCE,
       traderName: t.traderName?.trim() || "",
       status: "Open", // Will be set after all rows are processed
     };
   });
 
-  // Determine open/closed status per trade key
-  const lastRowByKey: Record<string, LedgerRow> = {};
+  // Determine open/closed status per trade key (grouped by orderId/docNumber)
+  // A trade group is "Open" if its net USD or ZAR across all its rows is non-zero
+  const groupNet: Record<string, { usd: number; zar: number }> = {};
   for (const row of rows) {
     const key = row.tradeNumber || row.docNumber || `__id_${row.id}`;
-    lastRowByKey[key] = row;
+    if (!groupNet[key]) groupNet[key] = { usd: 0, zar: 0 };
+    groupNet[key].usd += row.creditUsd - row.debitUsd;
+    groupNet[key].zar += row.creditZar - row.debitZar;
   }
 
   const openKeys = new Set<string>();
-  for (const [key, lastRow] of Object.entries(lastRowByKey)) {
-    if (Math.abs(lastRow.balanceUsd) > 0.01 || Math.abs(lastRow.balanceZar) > 0.01) {
+  for (const [key, net] of Object.entries(groupNet)) {
+    if (Math.abs(net.usd) > 0.01 || Math.abs(net.zar) > 0.01) {
       openKeys.add(key);
     }
   }
@@ -197,7 +195,8 @@ export function buildLedger(trades: RawTradeRow[]): LedgerRow[] {
     row.status = openKeys.has(key) ? "Open" : "Closed";
   }
 
-  return rows;
+  // Reverse to newest-first for display (balance was calculated oldest-first)
+  return rows.reverse();
 }
 
 /**

@@ -543,7 +543,7 @@ export default function PmxLedgerPage() {
             ? "Failed to load ledger data. Try syncing first."
             : "No trades found. Click 'Sync PMX' to fetch trade data."
         }
-        initialSorting={[{ id: "tradeDate", desc: true }]}
+        enableSorting={false}
       />
     </PageShell>
   );

@@ -88,6 +88,8 @@ interface DataTableProps<TData> {
   stickyHeader?: boolean;
   /** Max height for scrollable body */
   maxHeight?: string;
+  /** Enable column sorting (default: true) */
+  enableSorting?: boolean;
 }
 
 export function DataTable<TData>({
@@ -107,6 +109,7 @@ export function DataTable<TData>({
   initialSorting = [],
   stickyHeader = false,
   maxHeight,
+  enableSorting: enableSortingProp = true,
 }: DataTableProps<TData>) {
   const [sorting, setSorting] = useState<SortingState>(initialSorting);
   const [columnFilters, setColumnFilters] = useState<ColumnFiltersState>([]);
@@ -116,6 +119,7 @@ export function DataTable<TData>({
   const table = useReactTable({
     data,
     columns,
+    enableSorting: enableSortingProp,
     state: {
       sorting,
       columnFilters,
