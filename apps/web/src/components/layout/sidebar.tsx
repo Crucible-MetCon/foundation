@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { cn } from "@/lib/utils";
 import {
   BarChart3,
@@ -18,6 +19,11 @@ import {
   Home,
   Landmark,
   Package,
+  RefreshCw,
+  CheckCircle2,
+  XCircle,
+  AlertCircle,
+  Loader2,
 } from "lucide-react";
 
 interface SidebarProps {
@@ -26,6 +32,37 @@ interface SidebarProps {
     role: string;
     isAdmin: boolean;
   };
+}
+
+interface SystemStatusResponse {
+  ok: boolean;
+  isLive: boolean;
+  checkedAt: string;
+  pmx: {
+    ok: boolean;
+    allPass: boolean;
+    error: string | null;
+    checks: { label: string; pass: boolean }[];
+  };
+  tmc: {
+    ok: boolean;
+    fresh: boolean;
+    error: string | null;
+    lastSyncedAt: string | null;
+    minutesAgo: number | null;
+    tradeCount: number;
+    thresholdHours: number;
+  };
+}
+
+function timeAgo(isoString: string): string {
+  const diff = Date.now() - new Date(isoString).getTime();
+  const mins = Math.floor(diff / 60_000);
+  if (mins < 1) return "just now";
+  if (mins < 60) return `${mins}m ago`;
+  const hrs = Math.floor(mins / 60);
+  if (hrs < 24) return `${hrs}h ${mins % 60}m ago`;
+  return `${Math.floor(hrs / 24)}d ago`;
 }
 
 const navSections = [
@@ -75,6 +112,23 @@ const adminSection = {
 
 export function Sidebar({ user }: SidebarProps) {
   const pathname = usePathname();
+  const queryClient = useQueryClient();
+
+  const {
+    data: status,
+    isLoading: statusLoading,
+    isFetching: statusFetching,
+  } = useQuery<SystemStatusResponse>({
+    queryKey: ["system-status"],
+    queryFn: async () => {
+      const resp = await fetch("/api/system-status");
+      if (!resp.ok) throw new Error("Failed");
+      return resp.json();
+    },
+    refetchInterval: 5 * 60_000,
+    staleTime: 4 * 60_000,
+    retry: 1,
+  });
 
   const sections = user.isAdmin
     ? [...navSections, adminSection]
@@ -130,14 +184,107 @@ export function Sidebar({ user }: SidebarProps) {
         ))}
       </nav>
 
-      {/* User info */}
+      {/* System Status */}
       <div className="border-t border-white/10 px-4 py-3">
-        <p className="text-sm font-medium text-[var(--color-sidebar-active)]">
-          {user.displayName}
-        </p>
-        <p className="text-xs capitalize text-[var(--color-sidebar-text)]">
-          {user.role}
-        </p>
+        {statusLoading ? (
+          <div className="flex items-center gap-2">
+            <Loader2 size={14} className="animate-spin text-[var(--color-sidebar-text)]" />
+            <span className="text-xs text-[var(--color-sidebar-text)]">
+              Checking status...
+            </span>
+          </div>
+        ) : status ? (
+          <div className="space-y-2">
+            {/* Live / Offline badge row */}
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-2">
+                <span className="relative flex h-2 w-2">
+                  <span
+                    className={`absolute inline-flex h-full w-full rounded-full opacity-75 ${
+                      status.isLive ? "bg-green-400 animate-ping" : "bg-red-400"
+                    }`}
+                  />
+                  <span
+                    className={`relative inline-flex h-2 w-2 rounded-full ${
+                      status.isLive ? "bg-green-400" : "bg-red-400"
+                    }`}
+                  />
+                </span>
+                <span
+                  className={`text-xs font-semibold ${
+                    status.isLive ? "text-green-400" : "text-red-400"
+                  }`}
+                >
+                  {status.isLive ? "System Live" : "System Offline"}
+                </span>
+              </div>
+              <button
+                onClick={() =>
+                  queryClient.invalidateQueries({ queryKey: ["system-status"] })
+                }
+                disabled={statusFetching}
+                className="flex items-center justify-center rounded p-1 text-[var(--color-sidebar-text)] transition-colors hover:text-white disabled:opacity-50"
+                title="Refresh status"
+              >
+                <RefreshCw
+                  size={12}
+                  className={statusFetching ? "animate-spin" : ""}
+                />
+              </button>
+            </div>
+
+            {/* Check details */}
+            <div className="space-y-1">
+              {/* PMX check */}
+              <div className="flex items-center gap-1.5">
+                {status.pmx.ok && status.pmx.allPass ? (
+                  <CheckCircle2 size={11} className="shrink-0 text-green-400" />
+                ) : status.pmx.ok ? (
+                  <XCircle size={11} className="shrink-0 text-red-400" />
+                ) : (
+                  <AlertCircle size={11} className="shrink-0 text-amber-400" />
+                )}
+                <span className="text-[11px] text-[var(--color-sidebar-text)]">
+                  {status.pmx.ok && status.pmx.allPass
+                    ? "PMX Verified"
+                    : status.pmx.ok
+                      ? `PMX Mismatch`
+                      : "PMX Error"}
+                </span>
+              </div>
+
+              {/* TradeMC check */}
+              <div className="flex items-center gap-1.5">
+                {status.tmc.ok && status.tmc.fresh ? (
+                  <CheckCircle2 size={11} className="shrink-0 text-green-400" />
+                ) : status.tmc.ok ? (
+                  <AlertCircle size={11} className="shrink-0 text-amber-400" />
+                ) : (
+                  <XCircle size={11} className="shrink-0 text-red-400" />
+                )}
+                <span className="text-[11px] text-[var(--color-sidebar-text)]">
+                  {status.tmc.ok
+                    ? status.tmc.fresh
+                      ? `TradeMC Synced${status.tmc.minutesAgo !== null ? ` (${status.tmc.minutesAgo}m ago)` : ""}`
+                      : `TradeMC Stale${status.tmc.minutesAgo !== null ? ` (${status.tmc.minutesAgo}m ago)` : ""}`
+                    : "TradeMC Error"}
+                </span>
+              </div>
+            </div>
+
+            {/* Checked timestamp */}
+            <p className="text-[10px] text-[var(--color-sidebar-text)]/50">
+              Checked {timeAgo(status.checkedAt)}
+            </p>
+          </div>
+        ) : (
+          <div className="flex items-center gap-2">
+            <AlertCircle size={14} className="text-amber-400" />
+            <span className="text-xs text-[var(--color-sidebar-text)]">
+              Status unavailable
+            </span>
+          </div>
+        )}
       </div>
     </aside>
   );
