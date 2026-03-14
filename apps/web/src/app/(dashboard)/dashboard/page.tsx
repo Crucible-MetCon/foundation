@@ -1,6 +1,6 @@
 "use client";
 
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import Link from "next/link";
 import {
   Scale,
@@ -15,6 +15,10 @@ import {
   Download,
   BarChart3,
   RefreshCw,
+  CheckCircle2,
+  XCircle,
+  AlertCircle,
+  Loader2,
 } from "lucide-react";
 import { PageShell } from "@/components/layout/page-shell";
 import { fmt } from "@/lib/utils";
@@ -70,12 +74,43 @@ interface ProfitResponse {
   summary: ProfitSummary;
 }
 
+interface SystemStatusResponse {
+  ok: boolean;
+  isLive: boolean;
+  checkedAt: string;
+  pmx: {
+    ok: boolean;
+    allPass: boolean;
+    error: string | null;
+    checks: { label: string; pass: boolean }[];
+  };
+  tmc: {
+    ok: boolean;
+    fresh: boolean;
+    error: string | null;
+    lastSyncedAt: string | null;
+    minutesAgo: number | null;
+    tradeCount: number;
+    thresholdHours: number;
+  };
+}
+
 // ── Helpers ──
 
 function balanceColor(val: number): string {
   if (val > 0.001) return "text-green-600";
   if (val < -0.001) return "text-red-600";
   return "text-[var(--color-text-primary)]";
+}
+
+function timeAgo(isoString: string): string {
+  const diff = Date.now() - new Date(isoString).getTime();
+  const mins = Math.floor(diff / 60_000);
+  if (mins < 1) return "just now";
+  if (mins < 60) return `${mins}m ago`;
+  const hrs = Math.floor(mins / 60);
+  if (hrs < 24) return `${hrs}h ${mins % 60}m ago`;
+  return `${Math.floor(hrs / 24)}d ago`;
 }
 
 // ── Skeleton Components ──
@@ -100,6 +135,232 @@ function MetricCardSkeleton() {
     <div className="rounded-xl border border-[var(--color-border)] bg-[var(--color-surface)] p-4 animate-pulse">
       <div className="h-3 w-20 rounded bg-[var(--color-border)]" />
       <div className="mt-2 h-6 w-16 rounded bg-[var(--color-border)]" />
+    </div>
+  );
+}
+
+// ── System Status Banner ──
+
+function SystemStatusBanner({
+  data,
+  isLoading,
+  isFetching,
+  error,
+  onRefresh,
+}: {
+  data: SystemStatusResponse | undefined;
+  isLoading: boolean;
+  isFetching: boolean;
+  error: Error | null;
+  onRefresh: () => void;
+}) {
+  // Loading state
+  if (isLoading) {
+    return (
+      <div className="flex items-center gap-3 rounded-xl border border-[var(--color-border)] bg-[var(--color-surface)] px-5 py-3">
+        <Loader2 size={18} className="animate-spin text-[var(--color-text-muted)]" />
+        <span className="text-sm text-[var(--color-text-secondary)]">
+          Checking system status...
+        </span>
+      </div>
+    );
+  }
+
+  // Error state
+  if (error || !data) {
+    return (
+      <div className="flex items-center justify-between rounded-xl border border-amber-200 bg-amber-50 px-5 py-3">
+        <div className="flex items-center gap-3">
+          <AlertCircle size={18} className="text-amber-600" />
+          <div>
+            <span className="text-sm font-medium text-amber-800">
+              Unable to determine system status
+            </span>
+            {error && (
+              <p className="text-xs text-amber-600">
+                {error.message}
+              </p>
+            )}
+          </div>
+        </div>
+        <button
+          onClick={onRefresh}
+          disabled={isFetching}
+          className="flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-xs font-medium text-amber-700 transition-colors hover:bg-amber-100 disabled:opacity-50"
+        >
+          <RefreshCw size={12} className={isFetching ? "animate-spin" : ""} />
+          Retry
+        </button>
+      </div>
+    );
+  }
+
+  const { isLive, pmx, tmc, checkedAt } = data;
+  const failedPmxChecks = pmx.checks.filter((c) => !c.pass);
+
+  return (
+    <div
+      className={`rounded-xl border px-5 py-3 ${
+        isLive
+          ? "border-green-200 bg-green-50"
+          : "border-red-200 bg-red-50"
+      }`}
+    >
+      <div className="flex items-center justify-between">
+        {/* Left: Status badge + details */}
+        <div className="flex items-center gap-3">
+          {/* Pulsing dot + label */}
+          <div className="flex items-center gap-2">
+            <span className="relative flex h-2.5 w-2.5">
+              <span
+                className={`absolute inline-flex h-full w-full rounded-full opacity-75 ${
+                  isLive ? "bg-green-500 animate-ping" : "bg-red-500"
+                }`}
+              />
+              <span
+                className={`relative inline-flex h-2.5 w-2.5 rounded-full ${
+                  isLive ? "bg-green-500" : "bg-red-500"
+                }`}
+              />
+            </span>
+            <span
+              className={`text-sm font-semibold ${
+                isLive ? "text-green-800" : "text-red-800"
+              }`}
+            >
+              {isLive ? "System Live" : "System Offline"}
+            </span>
+          </div>
+
+          {/* Divider */}
+          <span
+            className={`hidden sm:block h-4 w-px ${
+              isLive ? "bg-green-200" : "bg-red-200"
+            }`}
+          />
+
+          {/* Detail chips */}
+          <div className="hidden sm:flex items-center gap-2">
+            {/* PMX Status */}
+            <span
+              className={`inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-xs font-medium ${
+                pmx.ok && pmx.allPass
+                  ? "bg-green-100 text-green-700"
+                  : pmx.ok && !pmx.allPass
+                    ? "bg-red-100 text-red-700"
+                    : "bg-amber-100 text-amber-700"
+              }`}
+            >
+              {pmx.ok && pmx.allPass ? (
+                <CheckCircle2 size={11} />
+              ) : pmx.ok && !pmx.allPass ? (
+                <XCircle size={11} />
+              ) : (
+                <AlertCircle size={11} />
+              )}
+              {pmx.ok && pmx.allPass
+                ? "PMX Verified"
+                : pmx.ok && !pmx.allPass
+                  ? `PMX Mismatch (${failedPmxChecks.map((c) => c.label).join(", ")})`
+                  : "PMX Error"}
+            </span>
+
+            {/* TradeMC Status */}
+            <span
+              className={`inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-xs font-medium ${
+                tmc.ok && tmc.fresh
+                  ? "bg-green-100 text-green-700"
+                  : tmc.ok && !tmc.fresh
+                    ? "bg-amber-100 text-amber-700"
+                    : "bg-red-100 text-red-700"
+              }`}
+            >
+              {tmc.ok && tmc.fresh ? (
+                <CheckCircle2 size={11} />
+              ) : (
+                <AlertCircle size={11} />
+              )}
+              {tmc.ok
+                ? tmc.fresh
+                  ? `TradeMC Synced${tmc.minutesAgo !== null ? ` (${tmc.minutesAgo}m ago)` : ""}`
+                  : `TradeMC Stale${tmc.minutesAgo !== null ? ` (${tmc.minutesAgo}m ago)` : ""}`
+                : "TradeMC Error"}
+            </span>
+          </div>
+        </div>
+
+        {/* Right: Checked time + refresh */}
+        <div className="flex items-center gap-3">
+          <span
+            className={`text-xs ${
+              isLive ? "text-green-600" : "text-red-600"
+            }`}
+          >
+            Checked {timeAgo(checkedAt)}
+          </span>
+          <button
+            onClick={onRefresh}
+            disabled={isFetching}
+            className={`flex items-center gap-1 rounded-lg px-2.5 py-1 text-xs font-medium transition-colors disabled:opacity-50 ${
+              isLive
+                ? "text-green-700 hover:bg-green-100"
+                : "text-red-700 hover:bg-red-100"
+            }`}
+          >
+            <RefreshCw
+              size={12}
+              className={isFetching ? "animate-spin" : ""}
+            />
+            {isFetching ? "Checking" : "Refresh"}
+          </button>
+        </div>
+      </div>
+
+      {/* Mobile detail row (visible on small screens) */}
+      <div className="mt-2 flex flex-wrap items-center gap-2 sm:hidden">
+        <span
+          className={`inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-xs font-medium ${
+            pmx.ok && pmx.allPass
+              ? "bg-green-100 text-green-700"
+              : pmx.ok && !pmx.allPass
+                ? "bg-red-100 text-red-700"
+                : "bg-amber-100 text-amber-700"
+          }`}
+        >
+          {pmx.ok && pmx.allPass ? (
+            <CheckCircle2 size={11} />
+          ) : pmx.ok && !pmx.allPass ? (
+            <XCircle size={11} />
+          ) : (
+            <AlertCircle size={11} />
+          )}
+          {pmx.ok && pmx.allPass
+            ? "PMX Verified"
+            : pmx.ok && !pmx.allPass
+              ? "PMX Mismatch"
+              : "PMX Error"}
+        </span>
+        <span
+          className={`inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-xs font-medium ${
+            tmc.ok && tmc.fresh
+              ? "bg-green-100 text-green-700"
+              : tmc.ok && !tmc.fresh
+                ? "bg-amber-100 text-amber-700"
+                : "bg-red-100 text-red-700"
+          }`}
+        >
+          {tmc.ok && tmc.fresh ? (
+            <CheckCircle2 size={11} />
+          ) : (
+            <AlertCircle size={11} />
+          )}
+          {tmc.ok
+            ? tmc.fresh
+              ? "TradeMC OK"
+              : "TradeMC Stale"
+            : "TradeMC Error"}
+        </span>
+      </div>
     </div>
   );
 }
@@ -160,6 +421,26 @@ const quickLinks = [
 // ── Page Component ──
 
 export default function DashboardPage() {
+  const queryClient = useQueryClient();
+
+  // Fetch system status (polls every 5 minutes)
+  const {
+    data: statusData,
+    isLoading: statusLoading,
+    isFetching: statusFetching,
+    error: statusError,
+  } = useQuery<SystemStatusResponse>({
+    queryKey: ["system-status"],
+    queryFn: async () => {
+      const resp = await fetch("/api/system-status");
+      if (!resp.ok) throw new Error("Failed to check system status");
+      return resp.json();
+    },
+    refetchInterval: 5 * 60_000, // 5 minutes
+    staleTime: 4 * 60_000, // 4 minutes
+    retry: 1,
+  });
+
   // Fetch account balances
   const {
     data: balancesData,
@@ -220,6 +501,17 @@ export default function DashboardPage() {
       title="Dashboard"
       description="Overview of your trading positions and key metrics."
     >
+      {/* ── System Status Banner ── */}
+      <SystemStatusBanner
+        data={statusData}
+        isLoading={statusLoading}
+        isFetching={statusFetching}
+        error={statusError as Error | null}
+        onRefresh={() =>
+          queryClient.invalidateQueries({ queryKey: ["system-status"] })
+        }
+      />
+
       {/* Error banner */}
       {anyError && (
         <div className="rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-800">
