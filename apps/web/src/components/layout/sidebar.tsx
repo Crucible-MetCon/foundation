@@ -24,6 +24,7 @@ import {
   XCircle,
   AlertCircle,
   Loader2,
+  LineChart,
 } from "lucide-react";
 
 interface SidebarProps {
@@ -85,6 +86,7 @@ const navSections = [
       },
       { href: "/hedging", label: "Hedging", icon: Scale },
       { href: "/profit", label: "Profit", icon: ArrowRightLeft },
+      { href: "/trading-strategies", label: "Trading Strategies", icon: LineChart },
     ],
   },
   {

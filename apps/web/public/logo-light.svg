@@ -1,0 +1,8 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 190 80" fill="none">
+  <!-- MC Logo - Light variant (dark text for light backgrounds) -->
+  <style>
+    @import url('https://fonts.googleapis.com/css2?family=Playfair+Display:wght@700&amp;display=swap');
+  </style>
+  <text x="4" y="64" font-family="'Playfair Display', 'Georgia', serif" font-size="72" font-weight="700" fill="#1A1A1A" letter-spacing="-2">MC</text>
+  <rect x="148" y="48" width="15" height="15" rx="2" fill="#B4723D"/>
+</svg>

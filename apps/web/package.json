@@ -10,6 +10,7 @@
     "type-check": "tsc --noEmit"
   },
   "dependencies": {
+    "@anthropic-ai/sdk": "^0.78.0",
     "@foundation/db": "workspace:*",
     "@foundation/domain": "workspace:*",
     "@foundation/integrations": "workspace:*",
