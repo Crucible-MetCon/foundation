@@ -8,3 +8,6 @@ export {
 export { accountOpeningBalances } from "./opening-balances";
 export { syncJobs } from "./sync-jobs";
 export { devTasks } from "./dev-tasks";
+
+export { appSettings } from "./app-settings";
+export { dailyMaxExposure } from "./daily-max-exposure";

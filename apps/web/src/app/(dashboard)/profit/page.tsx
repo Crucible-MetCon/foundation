@@ -6,6 +6,8 @@ import { type ColumnDef } from "@tanstack/react-table";
 import { RefreshCw, TrendingUp, ChevronDown, ChevronUp } from "lucide-react";
 import { PageShell } from "@/components/layout/page-shell";
 import { DataTable, numCell } from "@/components/ui/data-table";
+import { DailyPnlChart } from "@/components/charts/daily-pnl-chart";
+import { DailyExposureChart } from "@/components/charts/daily-exposure-chart";
 import { fmt, fmtDate } from "@/lib/utils";
 
 // ── Types ──
@@ -98,6 +100,25 @@ export default function ProfitPage() {
         return resp.json();
       },
     });
+
+  // Chart data query
+  const { data: chartData } = useQuery<{
+    dailyPnl: Array<{
+      date: string;
+      metalProfitZar: number;
+      exchangeProfitZar: number;
+      hurdleZar: number;
+    }>;
+    dailyExposure: Array<{ date: string; maxExposureZar: number }>;
+    hurdleRatePct: number;
+  }>({
+    queryKey: ["profit-daily-chart"],
+    queryFn: async () => {
+      const resp = await fetch("/api/profit/daily-chart");
+      if (!resp.ok) throw new Error("Failed to load chart data");
+      return resp.json();
+    },
+  });
 
   const months = data?.months ?? [];
   const summary = data?.summary;
@@ -309,6 +330,14 @@ export default function ProfitPage() {
             value={`${fmt(summary.averageProfitMarginPct)}%`}
             sub="Weighted average"
           />
+        </div>
+      )}
+
+      {/* Charts */}
+      {chartData && (
+        <div className="grid gap-4 lg:grid-cols-2">
+          <DailyPnlChart data={chartData.dailyPnl} />
+          <DailyExposureChart data={chartData.dailyExposure} />
         </div>
       )}
 
