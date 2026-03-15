@@ -9,7 +9,7 @@ import {
   Tooltip,
   ReferenceLine,
   CartesianGrid,
-  Rectangle,
+  Cell,
 } from "recharts";
 
 interface DailyPnlPoint {
@@ -65,22 +65,64 @@ function CustomTooltip({ active, payload, label }: any) {
   );
 }
 
-// Custom bar shape: no fill, dark grey dotted border
-function HurdleBarShape(props: any) {
-  const { x, y, width, height } = props;
-  if (!height || height === 0) return null;
+/**
+ * Custom shape for the exchange (topmost) bar that also renders
+ * the hurdle rate outline behind/around the full stack.
+ * This ensures the hurdle outline is in the exact same x position.
+ */
+function ExchangeBarWithHurdle(props: any) {
+  const { x, y, width, height, payload, background } = props;
+  // The exchange bar's y+height gives us the bottom of the stack.
+  // We need to draw the hurdle from the baseline up to the hurdle value.
+  // Since this is part of the stacked bar, the bottom of the full stack
+  // is at background.y + background.height (the chart baseline).
+  const baseY = background ? background.y + background.height : y + Math.abs(height);
+  const hurdleVal = payload?.hurdleZar || 0;
+
+  // We need the pixel height for the hurdle. The exchange bar knows its
+  // own pixel-per-unit from its height and value.
+  // But it's easier: use the background (full category) height ratio.
+  // Actually, let's use a scale factor from the visible bar stack.
+  const metalVal = payload?.metalProfitZar || 0;
+  const exchangeVal = payload?.exchangeProfitZar || 0;
+  const stackVal = metalVal + exchangeVal;
+  
+  // The full stack pixel height (from baseline to top of exchange bar)
+  const stackPixelH = baseY - y;
+  const pxPerUnit = stackVal !== 0 ? Math.abs(stackPixelH / stackVal) : 0;
+  const hurdlePixelH = Math.abs(hurdleVal * pxPerUnit);
+  const hurdleY = baseY - hurdlePixelH;
+
   return (
-    <Rectangle
-      x={x}
-      y={y}
-      width={width}
-      height={height}
-      fill="transparent"
-      stroke="#6b7280"
-      strokeWidth={1.5}
-      strokeDasharray="4 3"
-      radius={[2, 2, 0, 0]}
-    />
+    <g>
+      {/* Hurdle outline (behind) */}
+      {hurdleVal > 0 && pxPerUnit > 0 && (
+        <rect
+          x={x}
+          y={hurdleY}
+          width={width}
+          height={hurdlePixelH}
+          fill="transparent"
+          stroke="#6b7280"
+          strokeWidth={1.5}
+          strokeDasharray="4 3"
+          rx={2}
+          ry={2}
+        />
+      )}
+      {/* Actual exchange bar */}
+      {height !== 0 && (
+        <rect
+          x={x}
+          y={height > 0 ? y : y + height}
+          width={width}
+          height={Math.abs(height)}
+          fill="#10b981"
+          rx={2}
+          ry={2}
+        />
+      )}
+    </g>
   );
 }
 
@@ -106,7 +148,6 @@ export function DailyPnlChart({ data }: { data: DailyPnlPoint[] }) {
       <ResponsiveContainer width="100%" height={280}>
         <ComposedChart
           data={data}
-          barGap={-1}
           margin={{ top: 5, right: 10, left: 10, bottom: 5 }}
         >
           <CartesianGrid
@@ -132,27 +173,19 @@ export function DailyPnlChart({ data }: { data: DailyPnlPoint[] }) {
           <Tooltip content={<CustomTooltip />} />
           <ReferenceLine y={0} stroke="var(--color-border)" strokeDasharray="2 2" />
 
-          {/* Hurdle bar: no fill, dark grey dotted outline */}
-          <Bar
-            dataKey="hurdleZar"
-            shape={<HurdleBarShape />}
-            isAnimationActive={false}
-          />
-
-          {/* Metal profit (stacked) */}
+          {/* Metal profit (bottom of stack) */}
           <Bar
             dataKey="metalProfitZar"
             stackId="pnl"
             fill="#3b82f6"
-            radius={[0, 0, 0, 0]}
           />
 
-          {/* Exchange profit (stacked on top of metal) */}
+          {/* Exchange profit (top of stack) — custom shape also draws hurdle outline */}
           <Bar
             dataKey="exchangeProfitZar"
             stackId="pnl"
             fill="#10b981"
-            radius={[2, 2, 0, 0]}
+            shape={<ExchangeBarWithHurdle />}
           />
         </ComposedChart>
       </ResponsiveContainer>
