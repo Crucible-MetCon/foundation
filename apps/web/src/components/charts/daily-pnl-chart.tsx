@@ -9,6 +9,7 @@ import {
   Tooltip,
   ReferenceLine,
   CartesianGrid,
+  Rectangle,
 } from "recharts";
 
 interface DailyPnlPoint {
@@ -64,6 +65,25 @@ function CustomTooltip({ active, payload, label }: any) {
   );
 }
 
+// Custom bar shape: no fill, dark grey dotted border
+function HurdleBarShape(props: any) {
+  const { x, y, width, height } = props;
+  if (!height || height === 0) return null;
+  return (
+    <Rectangle
+      x={x}
+      y={y}
+      width={width}
+      height={height}
+      fill="transparent"
+      stroke="#6b7280"
+      strokeWidth={1.5}
+      strokeDasharray="4 3"
+      radius={[2, 2, 0, 0]}
+    />
+  );
+}
+
 export function DailyPnlChart({ data }: { data: DailyPnlPoint[] }) {
   if (!data || data.length === 0) {
     return (
@@ -84,7 +104,11 @@ export function DailyPnlChart({ data }: { data: DailyPnlPoint[] }) {
         Daily P&L
       </h3>
       <ResponsiveContainer width="100%" height={280}>
-        <ComposedChart data={data} margin={{ top: 5, right: 10, left: 10, bottom: 5 }}>
+        <ComposedChart
+          data={data}
+          barGap={-1}
+          margin={{ top: 5, right: 10, left: 10, bottom: 5 }}
+        >
           <CartesianGrid
             strokeDasharray="3 3"
             stroke="var(--color-border)"
@@ -108,31 +132,27 @@ export function DailyPnlChart({ data }: { data: DailyPnlPoint[] }) {
           <Tooltip content={<CustomTooltip />} />
           <ReferenceLine y={0} stroke="var(--color-border)" strokeDasharray="2 2" />
 
-          {/* Hurdle volume bar (behind, translucent) */}
+          {/* Hurdle bar: no fill, dark grey dotted outline */}
           <Bar
             dataKey="hurdleZar"
-            fill="var(--color-text-muted)"
-            opacity={0.12}
-            radius={[2, 2, 0, 0]}
-            barSize={20}
+            shape={<HurdleBarShape />}
+            isAnimationActive={false}
           />
 
-          {/* Metal profit */}
+          {/* Metal profit (stacked) */}
           <Bar
             dataKey="metalProfitZar"
             stackId="pnl"
             fill="#3b82f6"
             radius={[0, 0, 0, 0]}
-            barSize={12}
           />
 
-          {/* Exchange profit */}
+          {/* Exchange profit (stacked on top of metal) */}
           <Bar
             dataKey="exchangeProfitZar"
             stackId="pnl"
             fill="#10b981"
             radius={[2, 2, 0, 0]}
-            barSize={12}
           />
         </ComposedChart>
       </ResponsiveContainer>
@@ -144,7 +164,11 @@ export function DailyPnlChart({ data }: { data: DailyPnlPoint[] }) {
           <span className="inline-block h-2.5 w-2.5 rounded-sm bg-[#10b981]" /> Exchange
         </span>
         <span className="flex items-center gap-1">
-          <span className="inline-block h-2.5 w-2.5 rounded-sm bg-[var(--color-text-muted)] opacity-20" /> Hurdle
+          <span
+            className="inline-block h-2.5 w-2.5 rounded-sm"
+            style={{ border: "1.5px dashed #6b7280" }}
+          />{" "}
+          Hurdle
         </span>
       </div>
     </div>
