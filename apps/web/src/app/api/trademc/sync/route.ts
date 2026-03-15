@@ -106,6 +106,15 @@ export async function POST(request: NextRequest) {
         tradesInserted++;
       }
     }
+    // If incremental sync found no changed trades, bump synced_at on the
+    // most-recent row so the system-status freshness check stays current.
+    if (tradeResult.ok && tradeResult.trades.length === 0 && lastSync) {
+      await (db as any).execute(sql`
+        UPDATE trademc_trades SET synced_at = NOW()
+        WHERE id = (SELECT id FROM trademc_trades ORDER BY synced_at DESC LIMIT 1)
+      `);
+    }
+
     result.trades = {
       fetched: tradeResult.trades.length,
       synced: tradesInserted,
