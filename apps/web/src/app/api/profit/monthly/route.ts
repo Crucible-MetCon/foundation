@@ -7,6 +7,25 @@ import {
   type PmxTradeInput,
 } from "@foundation/domain";
 
+// Ensure settings table exists
+let settingsTableEnsured = false;
+async function ensureSettingsTable() {
+  if (settingsTableEnsured) return;
+  await (db as any).execute(sql`
+    CREATE TABLE IF NOT EXISTS app_settings (
+      key TEXT PRIMARY KEY,
+      value TEXT NOT NULL,
+      updated_at TIMESTAMPTZ DEFAULT NOW()
+    )
+  `);
+  await (db as any).execute(sql`
+    INSERT INTO app_settings (key, value)
+    VALUES ('hurdle_rate_pct', '0.2')
+    ON CONFLICT (key) DO NOTHING
+  `);
+  settingsTableEnsured = true;
+}
+
 export async function GET() {
   try {
     // Load confirmed TradeMC trades
@@ -55,7 +74,34 @@ export async function GET() {
     }));
 
     const report = buildProfitReport(tmTrades, pmxTrades);
-    return NextResponse.json({ ok: true, ...report });
+
+    // Fetch hurdle rate setting
+    await ensureSettingsTable();
+    const settingsRows = await (db as any).execute(sql`
+      SELECT value FROM app_settings WHERE key = 'hurdle_rate_pct'
+    `);
+    const hurdleRatePct = parseFloat((settingsRows as any[])?.[0]?.value) || 0.2;
+
+    // Add hurdleZar to each month (sum of |sellSideZar| × rate)
+    const months = report.months.map((m: any) => {
+      const totalTradedValueZar = m.trades.reduce(
+        (sum: number, t: any) => sum + Math.abs(t.sellSideZar || 0),
+        0,
+      );
+      return {
+        ...m,
+        hurdleZar: Math.round(totalTradedValueZar * (hurdleRatePct / 100) * 100) / 100,
+      };
+    });
+
+    // Add total hurdle to summary
+    const totalHurdleZar = months.reduce((sum: number, m: any) => sum + m.hurdleZar, 0);
+
+    return NextResponse.json({
+      ok: true,
+      months,
+      summary: { ...report.summary, hurdleZar: Math.round(totalHurdleZar * 100) / 100, hurdleRatePct },
+    });
   } catch (error) {
     console.error("Profit report error:", error);
     return NextResponse.json(

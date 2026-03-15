@@ -1,9 +1,10 @@
 "use client";
 
+import { useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { useQuery } from "@tanstack/react-query";
-import { LogOut, Settings } from "lucide-react";
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { LogOut, Settings, X, ClipboardPlus } from "lucide-react";
 
 interface HeaderProps {
   user: {
@@ -31,8 +32,200 @@ function fmtTicker(val: number, decimals: number): string {
   });
 }
 
+// ── Shared form styles ──
+const inputClass =
+  "w-full rounded-lg border border-[var(--color-border)] bg-[var(--color-background)] px-3 py-2 text-sm text-[var(--color-text-primary)] placeholder-[var(--color-text-muted)] focus:border-[var(--color-primary)] focus:ring-1 focus:ring-[var(--color-primary)] outline-none";
+const labelClass = "block text-sm font-medium text-[var(--color-text-secondary)] mb-1";
+
+interface UserOption {
+  id: number;
+  displayName: string | null;
+  username: string;
+}
+
+function LogDevModal({ open, onClose, currentUserId }: { open: boolean; onClose: () => void; currentUserId: number }) {
+  const queryClient = useQueryClient();
+  const [title, setTitle] = useState("");
+  const [description, setDescription] = useState("");
+  const [type, setType] = useState("enhancement");
+  const [priority, setPriority] = useState("medium");
+  const [assignedTo, setAssignedTo] = useState(String(currentUserId));
+  const [error, setError] = useState("");
+
+  const { data: users } = useQuery<UserOption[]>({
+    queryKey: ["admin-users-list"],
+    queryFn: async () => {
+      const resp = await fetch("/api/admin/users");
+      if (!resp.ok) return [];
+      const data = await resp.json();
+      return data.users ?? [];
+    },
+    enabled: open,
+    staleTime: 300_000,
+  });
+
+  const createMutation = useMutation({
+    mutationFn: async () => {
+      const resp = await fetch("/api/admin/tasks", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          title: title.trim(),
+          description: description.trim() || undefined,
+          type,
+          priority,
+          assignedTo: assignedTo ? parseInt(assignedTo, 10) : undefined,
+        }),
+      });
+      const data = await resp.json();
+      if (!resp.ok) throw new Error(data.error || "Failed to create task");
+      return data;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["admin-tasks"] });
+      queryClient.invalidateQueries({ queryKey: ["my-tasks-count"] });
+      setTitle("");
+      setDescription("");
+      setType("enhancement");
+      setPriority("medium");
+      setAssignedTo(String(currentUserId));
+      setError("");
+      onClose();
+    },
+    onError: (err: Error) => {
+      setError(err.message);
+    },
+  });
+
+  const handleSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    setError("");
+    if (!title.trim()) {
+      setError("Title is required");
+      return;
+    }
+    createMutation.mutate();
+  };
+
+  if (!open) return null;
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50">
+      <div className="w-full max-w-md rounded-xl bg-[var(--color-surface)] p-6 shadow-xl">
+        <div className="mb-4 flex items-center justify-between">
+          <h2 className="text-lg font-semibold text-[var(--color-text-primary)]">
+            Log Dev Task
+          </h2>
+          <button
+            onClick={onClose}
+            className="rounded-md p-1 text-[var(--color-text-secondary)] hover:bg-[var(--color-background)] hover:text-[var(--color-text-primary)] transition-colors"
+          >
+            <X size={18} />
+          </button>
+        </div>
+
+        <form onSubmit={handleSubmit} className="space-y-4">
+          <div>
+            <label className={labelClass}>Title *</label>
+            <input
+              type="text"
+              value={title}
+              onChange={(e) => setTitle(e.target.value)}
+              className={inputClass}
+              placeholder="Brief description of the task"
+              autoFocus
+            />
+          </div>
+
+          <div>
+            <label className={labelClass}>Description</label>
+            <textarea
+              value={description}
+              onChange={(e) => setDescription(e.target.value)}
+              className={`${inputClass} min-h-[80px] resize-y`}
+              placeholder="Detailed description (optional)"
+            />
+          </div>
+
+          <div className="grid grid-cols-2 gap-3">
+            <div>
+              <label className={labelClass}>Type</label>
+              <select
+                value={type}
+                onChange={(e) => setType(e.target.value)}
+                className={inputClass}
+              >
+                <option value="enhancement">Enhancement</option>
+                <option value="bug">Bug</option>
+              </select>
+            </div>
+
+            <div>
+              <label className={labelClass}>Priority</label>
+              <select
+                value={priority}
+                onChange={(e) => setPriority(e.target.value)}
+                className={inputClass}
+              >
+                <option value="low">Low</option>
+                <option value="medium">Medium</option>
+                <option value="high">High</option>
+                <option value="critical">Critical</option>
+              </select>
+            </div>
+          </div>
+
+          <div>
+            <label className={labelClass}>Assigned To</label>
+            <select
+              value={assignedTo}
+              onChange={(e) => setAssignedTo(e.target.value)}
+              className={inputClass}
+            >
+              <option value="">Unassigned</option>
+              {(users ?? []).map((u) => (
+                <option key={u.id} value={u.id}>
+                  {u.displayName || u.username}
+                </option>
+              ))}
+            </select>
+          </div>
+
+          {error && <p className="text-sm text-red-600">{error}</p>}
+
+          <div className="flex items-center justify-end gap-3 pt-2">
+            <button
+              type="button"
+              onClick={onClose}
+              disabled={createMutation.isPending}
+              className="inline-flex items-center justify-center gap-2 rounded-lg border border-[var(--color-border)] px-4 py-2 text-sm font-medium text-[var(--color-text-secondary)] hover:bg-[var(--color-background)] disabled:opacity-50 transition-colors"
+            >
+              Cancel
+            </button>
+            <button
+              type="submit"
+              disabled={createMutation.isPending}
+              className="inline-flex items-center justify-center gap-2 rounded-lg bg-[var(--color-primary)] px-4 py-2 text-sm font-medium text-white hover:bg-[var(--color-primary-hover)] disabled:opacity-50 transition-colors"
+            >
+              {createMutation.isPending ? (
+                <>
+                  <div className="h-4 w-4 animate-spin rounded-full border-2 border-white border-t-transparent" />
+                  Creating...
+                </>
+              ) : (
+                "Create Task"
+              )}
+            </button>
+          </div>
+        </form>
+      </div>
+    </div>
+  );
+}
+
 export function Header({ user }: HeaderProps) {
   const router = useRouter();
+  const [showLogDev, setShowLogDev] = useState(false);
 
   const { data } = useQuery<HeaderData>({
     queryKey: ["header-data"],
@@ -110,8 +303,19 @@ export function Header({ user }: HeaderProps) {
         </span>
       </div>
 
+      {/* Log Dev Modal */}
+      <LogDevModal open={showLogDev} onClose={() => setShowLogDev(false)} currentUserId={user.id} />
+
       {/* User controls */}
       <div className="flex items-center gap-4">
+        <button
+          onClick={() => setShowLogDev(true)}
+          className="inline-flex items-center gap-1.5 rounded-lg border border-[var(--color-border)] px-3 py-1.5 text-xs font-medium text-[var(--color-text-secondary)] hover:bg-[var(--color-background)] hover:text-[var(--color-text-primary)] transition-colors"
+          title="Log a dev task"
+        >
+          <ClipboardPlus className="h-3.5 w-3.5" />
+          Log Dev
+        </button>
         <div className="relative text-right">
           <p className="text-sm font-medium text-[var(--color-text-primary)]">
             {user.displayName}

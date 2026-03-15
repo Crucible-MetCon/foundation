@@ -38,6 +38,7 @@ interface ProfitMonth {
   exchangeProfitZar: number;
   metalProfitZar: number;
   totalProfitZar: number;
+  hurdleZar: number;
   tradeCount: number;
   trades: ProfitTrade[];
 }
@@ -48,6 +49,8 @@ interface ProfitSummary {
   exchangeProfitZar: number;
   metalProfitZar: number;
   totalProfitZar: number;
+  hurdleZar: number;
+  hurdleRatePct: number;
   averageProfitMarginPct: number;
 }
 
@@ -124,13 +127,12 @@ export default function ProfitPage() {
   const summary = data?.summary;
 
   // Most recent month starts expanded, others collapsed
-  const [expandedMonths, setExpandedMonths] = useState<Set<string>>(() => {
-    return new Set<string>();
-  });
+  // null = not yet initialised; once set, always use the Set directly
+  const [expandedMonths, setExpandedMonths] = useState<Set<string> | null>(null);
 
-  // Initialize expanded state when data loads: expand the first (most recent) month
+  // Auto-expand the first (most recent) month on initial data load
   const resolvedExpanded = useMemo(() => {
-    if (expandedMonths.size > 0) return expandedMonths;
+    if (expandedMonths !== null) return expandedMonths;
     if (months.length > 0) {
       return new Set([months[0].monthKey]);
     }
@@ -138,8 +140,8 @@ export default function ProfitPage() {
   }, [expandedMonths, months]);
 
   const toggleMonth = (monthKey: string) => {
-    setExpandedMonths((prev) => {
-      const next = new Set(prev.size > 0 ? prev : resolvedExpanded);
+    setExpandedMonths(() => {
+      const next = new Set(resolvedExpanded);
       if (next.has(monthKey)) {
         next.delete(monthKey);
       } else {
@@ -336,7 +338,7 @@ export default function ProfitPage() {
       {/* Charts */}
       {chartData && (
         <div className="grid gap-4 lg:grid-cols-2">
-          <DailyPnlChart data={chartData.dailyPnl} />
+          <DailyPnlChart data={chartData.dailyPnl} hurdleRatePct={chartData.hurdleRatePct} />
           <DailyExposureChart data={chartData.dailyExposure} />
         </div>
       )}
@@ -398,6 +400,12 @@ export default function ProfitPage() {
                   <p className="text-xs text-[var(--color-text-muted)]">Total</p>
                   <p className={`text-sm font-semibold ${colorClass}`}>
                     {fmt(month.totalProfitZar)}
+                  </p>
+                </div>
+                <div className="text-right">
+                  <p className="text-xs text-[var(--color-text-muted)]">Hurdle ({summary?.hurdleRatePct ?? 0.2}%)</p>
+                  <p className="text-sm font-medium text-[var(--color-text-muted)]">
+                    {fmt(month.hurdleZar)}
                   </p>
                 </div>
               </div>

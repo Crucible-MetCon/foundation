@@ -1,15 +1,16 @@
 "use client";
 
+import { useMemo } from "react";
 import {
   ResponsiveContainer,
-  BarChart,
+  ComposedChart,
   Bar,
+  Line,
   XAxis,
   YAxis,
   Tooltip,
   ReferenceLine,
   CartesianGrid,
-  Rectangle,
 } from "recharts";
 
 interface DailyPnlPoint {
@@ -17,6 +18,21 @@ interface DailyPnlPoint {
   metalProfitZar: number;
   exchangeProfitZar: number;
   hurdleZar: number;
+}
+
+/** Derived row with positive/negative splits for correct stacking */
+interface ChartRow {
+  date: string;
+  // Original values (for tooltip)
+  metalProfitZar: number;
+  exchangeProfitZar: number;
+  hurdleZar: number;
+  netProfitZar: number;
+  // Split values for stacking
+  metalPos: number;
+  metalNeg: number;
+  exchangePos: number;
+  exchangeNeg: number;
 }
 
 function formatDate(dateStr: string): string {
@@ -33,35 +49,55 @@ function formatZar(val: number): string {
 
 function CustomTooltip({ active, payload, label }: any) {
   if (!active || !payload?.length) return null;
-  const hurdle = payload.find((p: any) => p.dataKey === "hurdleZar");
-  const metal = payload.find((p: any) => p.dataKey === "metalProfitZar");
-  const exchange = payload.find((p: any) => p.dataKey === "exchangeProfitZar");
-  const total = (metal?.value || 0) + (exchange?.value || 0);
+
+  // Read original values from first payload entry's full data row
+  const row = payload[0]?.payload as ChartRow | undefined;
+  if (!row) return null;
+
+  const metal = row.metalProfitZar;
+  const exchange = row.exchangeProfitZar;
+  const total = metal + exchange;
+  const hurdle = row.hurdleZar;
 
   return (
     <div className="rounded-lg border border-[var(--color-border)] bg-[var(--color-surface)] px-3 py-2 text-xs shadow-lg">
       <p className="font-medium text-[var(--color-text-primary)] mb-1">
         {formatDate(label)}
       </p>
-      {metal && (
-        <p className="text-[var(--color-text-secondary)]">
-          Metal: <span className="font-medium">R{formatZar(metal.value)}</span>
-        </p>
-      )}
-      {exchange && (
-        <p className="text-[var(--color-text-secondary)]">
-          Exchange: <span className="font-medium">R{formatZar(exchange.value)}</span>
-        </p>
-      )}
+      <p className="text-[var(--color-text-secondary)]">
+        Metal: <span className="font-medium">R{formatZar(metal)}</span>
+      </p>
+      <p className="text-[var(--color-text-secondary)]">
+        Exchange: <span className="font-medium">R{formatZar(exchange)}</span>
+      </p>
       <p className="text-[var(--color-text-primary)] font-medium border-t border-[var(--color-border)] mt-1 pt-1">
         Net: R{formatZar(total)}
       </p>
-      {hurdle && (
+      {hurdle > 0 && (
         <p className="text-[var(--color-text-muted)]">
-          Hurdle: R{formatZar(hurdle.value)}
+          Hurdle: R{formatZar(hurdle)}
         </p>
       )}
     </div>
+  );
+}
+
+// Net Profit dot: green if net >= hurdle, red if below
+function NetProfitDot(props: any) {
+  const { cx, cy, payload } = props;
+  if (cx == null || cy == null) return null;
+  const net = payload?.netProfitZar ?? 0;
+  const hurdle = payload?.hurdleZar ?? 0;
+  const color = net >= hurdle ? "#10b981" : "#ef4444";
+  return (
+    <circle
+      cx={cx}
+      cy={cy}
+      r={5}
+      fill={color}
+      stroke="#000000"
+      strokeWidth={1.5}
+    />
   );
 }
 
@@ -71,11 +107,14 @@ function HurdleBarShape(props: any) {
   if (!width || !height || height === 0) return null;
   const h = Math.abs(height);
   const top = height >= 0 ? y : y + height;
+  // 50% wider than the P&L bars, centered
+  const widerWidth = width * 1.5;
+  const offsetX = x - (widerWidth - width) / 2;
   return (
     <rect
-      x={x}
+      x={offsetX}
       y={top}
-      width={width}
+      width={widerWidth}
       height={h}
       fill="transparent"
       stroke="#6b7280"
@@ -87,7 +126,25 @@ function HurdleBarShape(props: any) {
   );
 }
 
-export function DailyPnlChart({ data }: { data: DailyPnlPoint[] }) {
+export function DailyPnlChart({ data, hurdleRatePct }: { data: DailyPnlPoint[]; hurdleRatePct?: number }) {
+  // Split each value into positive and negative components so that
+  // Recharts stacks them independently — positive bars go up from 0,
+  // negative bars go down from 0, both are always visible.
+  const chartData = useMemo<ChartRow[]>(() => {
+    if (!data) return [];
+    return data.map((d) => ({
+      date: d.date,
+      metalProfitZar: d.metalProfitZar,
+      exchangeProfitZar: d.exchangeProfitZar,
+      hurdleZar: d.hurdleZar,
+      netProfitZar: d.metalProfitZar + d.exchangeProfitZar,
+      metalPos: d.metalProfitZar > 0 ? d.metalProfitZar : 0,
+      metalNeg: d.metalProfitZar < 0 ? d.metalProfitZar : 0,
+      exchangePos: d.exchangeProfitZar > 0 ? d.exchangeProfitZar : 0,
+      exchangeNeg: d.exchangeProfitZar < 0 ? d.exchangeProfitZar : 0,
+    }));
+  }, [data]);
+
   if (!data || data.length === 0) {
     return (
       <div className="rounded-xl border border-[var(--color-border)] bg-[var(--color-surface)] p-4">
@@ -107,8 +164,8 @@ export function DailyPnlChart({ data }: { data: DailyPnlPoint[] }) {
         Daily P&L
       </h3>
       <ResponsiveContainer width="100%" height={280}>
-        <BarChart
-          data={data}
+        <ComposedChart
+          data={chartData}
           barSize={16}
           barGap={-16}
           margin={{ top: 5, right: 10, left: 10, bottom: 5 }}
@@ -143,20 +200,45 @@ export function DailyPnlChart({ data }: { data: DailyPnlPoint[] }) {
             isAnimationActive={false}
           />
 
-          {/* Metal profit (stacked — bottom) */}
+          {/* Positive stack: metal + exchange gains stacked upward */}
           <Bar
-            dataKey="metalProfitZar"
-            stackId="pnl"
+            dataKey="metalPos"
+            stackId="pos"
             fill="#3b82f6"
+            isAnimationActive={false}
+          />
+          <Bar
+            dataKey="exchangePos"
+            stackId="pos"
+            fill="#10b981"
+            isAnimationActive={false}
           />
 
-          {/* Exchange profit (stacked — top) */}
+          {/* Negative stack: metal + exchange losses stacked downward */}
           <Bar
-            dataKey="exchangeProfitZar"
-            stackId="pnl"
-            fill="#10b981"
+            dataKey="metalNeg"
+            stackId="neg"
+            fill="#3b82f6"
+            isAnimationActive={false}
           />
-        </BarChart>
+          <Bar
+            dataKey="exchangeNeg"
+            stackId="neg"
+            fill="#10b981"
+            isAnimationActive={false}
+          />
+
+          {/* Net Profit line: sum of metal + exchange */}
+          <Line
+            dataKey="netProfitZar"
+            type="monotone"
+            stroke="#000000"
+            strokeWidth={2}
+            dot={<NetProfitDot />}
+            activeDot={<NetProfitDot />}
+            isAnimationActive={false}
+          />
+        </ComposedChart>
       </ResponsiveContainer>
       <div className="flex items-center justify-center gap-4 mt-2 text-[10px] text-[var(--color-text-muted)]">
         <span className="flex items-center gap-1">
@@ -166,11 +248,14 @@ export function DailyPnlChart({ data }: { data: DailyPnlPoint[] }) {
           <span className="inline-block h-2.5 w-2.5 rounded-sm bg-[#10b981]" /> Exchange
         </span>
         <span className="flex items-center gap-1">
+          <span className="inline-block h-2.5 w-2.5 rounded-full bg-black" /> Net Profit
+        </span>
+        <span className="flex items-center gap-1">
           <span
             className="inline-block h-2.5 w-2.5 rounded-sm"
             style={{ border: "1.5px dashed #6b7280" }}
           />{" "}
-          Hurdle
+          Hurdle ({hurdleRatePct != null ? `${hurdleRatePct}%` : "0.2%"})
         </span>
       </div>
     </div>
