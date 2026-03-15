@@ -2,10 +2,11 @@
 
 import { useState, useMemo } from "react";
 import { type ColumnDef } from "@tanstack/react-table";
-import { Search, FileText, ChevronDown } from "lucide-react";
+import { Search, FileText, ChevronDown, Download } from "lucide-react";
 import { PageShell } from "@/components/layout/page-shell";
 import { DataTable, numCell } from "@/components/ui/data-table";
 import { fmt, fmtDate } from "@/lib/utils";
+import { downloadCSV, downloadPDF } from "@/lib/export-utils";
 
 // ── Types ──
 
@@ -98,6 +99,128 @@ function StatCard({
 // ── Constants (must match domain) ──
 const GRAMS_PER_TROY_OUNCE = 31.1035;
 
+// ── Audit Export helper ──
+
+function buildAuditRows(ticket: TicketResult): Record<string, string>[] {
+  const { tmRows, stonexRows, summary } = ticket;
+  const rows: Record<string, string>[] = [];
+  const an = auditNum;
+
+  const goldTrades = stonexRows.filter(
+    (t) => t.symbol.replace(/[/\- ]/g, "").startsWith("XAU")
+  );
+  const fxTrades = stonexRows.filter(
+    (t) => t.symbol.replace(/[/\- ]/g, "").startsWith("USD")
+  );
+  const goldTotalQty = goldTrades.reduce((s, t) => s + t.quantity, 0);
+  const goldTotalVal = goldTrades.reduce((s, t) => s + t.quantity * t.price, 0);
+  const fxTotalQty = fxTrades.reduce((s, t) => s + t.quantity, 0);
+  const fxTotalVal = fxTrades.reduce((s, t) => s + t.quantity * t.price, 0);
+  let goldSignedOz = 0;
+  for (const t of goldTrades) goldSignedOz += t.side === "BUY" ? t.quantity : -t.quantity;
+  const tmTotalWeightG = tmRows.reduce((s, r) => s + r.weightG, 0);
+  const tmTotalWeightOz = tmTotalWeightG / GRAMS_PER_TROY_OUNCE;
+  const tmTotalUsd = tmRows.reduce((s, r) => s + r.usdValue, 0);
+  const tmTotalZarGross = tmRows.reduce((s, r) => s + r.zarValue, 0);
+  const tmTotalZarNet = tmRows.reduce((s, r) => s + r.zarValueLessRefining, 0);
+  let stonexCashUsd = 0;
+  for (const t of goldTrades) stonexCashUsd += t.side === "SELL" ? t.quantity * t.price : -(t.quantity * t.price);
+
+  const add = (section: string, item: string, formula: string, result: string) =>
+    rows.push({ Section: section, Item: item, Formula: formula, Result: result });
+
+  // 1. Input Data Summary
+  const s1 = "1. Input Data Summary";
+  add(s1, "TradeMC bookings (buy side)", "", `${tmRows.length}`);
+  add(s1, "StoneX/PMX trades (sell side)", "", `${stonexRows.length}`);
+  add(s1, "XAUUSD (gold) trades", "", `${goldTrades.length}`);
+  add(s1, "USDZAR (FX) trades", "", `${fxTrades.length}`);
+  add(s1, "Conversion constant", "", `${GRAMS_PER_TROY_OUNCE} g/troy oz`);
+
+  // 2. TradeMC Valuation
+  const s2 = "2. TradeMC Valuation";
+  tmRows.forEach((row, i) => {
+    const prefix = `Booking ${i + 1}: ${row.companyName}`;
+    add(s2, `${prefix} — Weight`, "", `${an(row.weightG, 2)} g`);
+    add(s2, `${prefix} — Weight (oz)`, `${an(row.weightG, 2)} / ${GRAMS_PER_TROY_OUNCE}`, `${an(row.weightOz, 6)} oz`);
+    add(s2, `${prefix} — Booked $/oz`, "", `$${an(row.usdPerOzBooked, 2)}`);
+    add(s2, `${prefix} — USD value`, `${an(row.weightOz, 6)} x $${an(row.usdPerOzBooked, 2)}`, `$${an(row.usdValue, 2)}`);
+    add(s2, `${prefix} — FX rate`, "", `${an(row.fxRate, 4)}`);
+    add(s2, `${prefix} — ZAR gross`, `$${an(row.usdValue, 2)} x ${an(row.fxRate, 4)}`, `R ${an(row.zarValue, 2)}`);
+    add(s2, `${prefix} — Refining %`, "", `${an(row.refiningRate, 2)}%`);
+    add(s2, `${prefix} — Refining deduction`, `R ${an(row.zarValue, 2)} x ${an(row.refiningRate, 2)}%`, `R ${an(row.zarValue * (row.refiningRate / 100), 2)}`);
+    add(s2, `${prefix} — ZAR net`, `R ${an(row.zarValue, 2)} x (1 - ${an(row.refiningRate, 2)}%)`, `R ${an(row.zarValueLessRefining, 2)}`);
+  });
+  if (tmRows.length > 1) {
+    add(s2, "TOTAL — Weight", "", `${an(tmTotalWeightG, 2)} g (${an(tmTotalWeightOz, 6)} oz)`);
+    add(s2, "TOTAL — USD value", "", `$${an(tmTotalUsd, 2)}`);
+    add(s2, "TOTAL — ZAR gross", "", `R ${an(tmTotalZarGross, 2)}`);
+    add(s2, "TOTAL — ZAR net", "", `R ${an(tmTotalZarNet, 2)}`);
+  }
+
+  // 3. StoneX Weighted Averages
+  const s3 = "3. StoneX Weighted Averages";
+  goldTrades.forEach((t) => {
+    add(s3, `Gold: ${t.side} ${an(t.quantity, 4)} oz @ $${an(t.price, 2)}`, `${an(t.quantity, 4)} x $${an(t.price, 2)}`, `$${an(t.quantity * t.price, 2)}`);
+  });
+  add(s3, "Gold — Sum of notional", "", `$${an(goldTotalVal, 2)}`);
+  add(s3, "Gold — Sum of quantity", "", `${an(goldTotalQty, 4)} oz`);
+  add(s3, "Gold Weighted Average", `$${an(goldTotalVal, 2)} / ${an(goldTotalQty, 4)}`, `$${an(summary.goldWaUsdOz, 2)} /oz`);
+  fxTrades.forEach((t) => {
+    add(s3, `FX: ${t.side} $${an(t.quantity, 2)} @ R ${an(t.price, 4)}`, `$${an(t.quantity, 2)} x R ${an(t.price, 4)}`, `R ${an(t.quantity * t.price, 2)}`);
+  });
+  if (fxTrades.length > 0) {
+    add(s3, "FX — Sum of notional", "", `R ${an(fxTotalVal, 2)}`);
+    add(s3, "FX — Sum of quantity", "", `$${an(fxTotalQty, 2)}`);
+    add(s3, "FX Weighted Average", `R ${an(fxTotalVal, 2)} / $${an(fxTotalQty, 2)}`, `R ${an(summary.fxWaUsdzar, 4)}`);
+  }
+
+  // 4. Spot Rate
+  const s4 = "4. Spot Rate Derivation";
+  add(s4, "Gold WA", "", `$${an(summary.goldWaUsdOz, 2)} /oz`);
+  add(s4, "FX WA", "", `R ${an(summary.fxWaUsdzar, 4)}`);
+  add(s4, "Spot ZAR per gram", `($${an(summary.goldWaUsdOz, 2)} x R ${an(summary.fxWaUsdzar, 4)}) / ${GRAMS_PER_TROY_OUNCE}`, `R ${an(summary.spotZarPerG, 2)} /g`);
+
+  // 5. StoneX USD Cash Flow
+  const s5 = "5. StoneX USD Cash Flow";
+  goldTrades.forEach((t) => {
+    const flow = t.side === "SELL" ? t.quantity * t.price : -(t.quantity * t.price);
+    add(s5, `${t.side} ${an(t.quantity, 4)} oz @ $${an(t.price, 2)}`, `${t.side === "SELL" ? "+" : "-"}(${an(t.quantity, 4)} x $${an(t.price, 2)})`, `${flow >= 0 ? "+" : "-"}$${an(Math.abs(flow), 2)}`);
+  });
+  add(s5, "Net StoneX USD cash flow", "", `${stonexCashUsd >= 0 ? "+" : "-"}$${an(Math.abs(stonexCashUsd), 2)}`);
+  add(s5, "Sell Side USD", "", `$${an(summary.sellSideUsd, 2)}`);
+  add(s5, "Buy Side USD", "", `$${an(summary.buySideUsd, 2)}`);
+  add(s5, "USD Profit", `$${an(summary.sellSideUsd, 2)} - $${an(summary.buySideUsd, 2)}`, `$${an(summary.profitUsd, 2)}`);
+
+  // 6. Control Account
+  const s6 = "6. Control Account";
+  add(s6, "TradeMC total weight", "", `+${an(tmTotalWeightG, 2)} g (+${an(tmTotalWeightOz, 6)} oz)`);
+  add(s6, "StoneX net gold (signed oz)", "", `${goldSignedOz >= 0 ? "+" : ""}${an(goldSignedOz, 4)} oz`);
+  add(s6, "StoneX net in grams", `${an(goldSignedOz, 4)} oz x ${GRAMS_PER_TROY_OUNCE}`, `${an(goldSignedOz * GRAMS_PER_TROY_OUNCE, 2)} g`);
+  add(s6, "Control Account (grams)", `${an(tmTotalWeightG, 2)} + (${an(goldSignedOz, 4)} x ${GRAMS_PER_TROY_OUNCE})`, `${an(summary.controlAccountG, 2)} g`);
+  add(s6, "Control Account (oz)", `${an(summary.controlAccountG, 2)} / ${GRAMS_PER_TROY_OUNCE}`, `${an(summary.controlAccountOz, 4)} oz`);
+  add(s6, "Control Account (ZAR)", `${an(summary.controlAccountG, 2)} x R ${an(summary.spotZarPerG, 2)}`, `R ${an(summary.controlAccountZar, 2)}`);
+
+  // 7. ZAR Position
+  const s7 = "7. ZAR Position";
+  add(s7, "StoneX ZAR flow", `${an(tmTotalWeightG, 2)} g x R ${an(summary.spotZarPerG, 2)}/g`, `R ${an(summary.stonexZarFlow, 2)}`);
+  add(s7, "Control Account ZAR", "", `R ${an(summary.controlAccountZar, 2)}`);
+  add(s7, "Sell Side ZAR", `R ${an(summary.stonexZarFlow, 2)} + R ${an(summary.controlAccountZar, 2)}`, `R ${an(summary.sellSideZar, 2)}`);
+  add(s7, "Buy Side ZAR", "", `R ${an(summary.buySideZar, 2)}`);
+
+  // 8. Profit / Loss
+  const s8 = "8. Profit / Loss";
+  add(s8, "Sell Side USD", "", `$${an(summary.sellSideUsd, 2)}`);
+  add(s8, "Buy Side USD", "", `$${an(summary.buySideUsd, 2)}`);
+  add(s8, "Profit (USD)", `$${an(summary.sellSideUsd, 2)} - $${an(summary.buySideUsd, 2)}`, `$${an(summary.profitUsd, 2)}`);
+  add(s8, "Sell Side ZAR", "", `R ${an(summary.sellSideZar, 2)}`);
+  add(s8, "Buy Side ZAR", "", `R ${an(summary.buySideZar, 2)}`);
+  add(s8, "Profit (ZAR)", `R ${an(summary.sellSideZar, 2)} - R ${an(summary.buySideZar, 2)}`, `R ${an(summary.profitZar, 2)}`);
+  add(s8, "Profit Margin", `(R ${an(summary.profitZar, 2)} / R ${an(summary.buySideZar, 2)}) x 100`, `${an(summary.profitPct, 2)}%`);
+
+  return rows;
+}
+
 // ── Audit Trail helper ──
 
 /** Format a number for audit display with full precision */
@@ -184,6 +307,25 @@ function AuditSection({
 
 function AuditTrail({ ticket }: { ticket: TicketResult }) {
   const { tmRows, stonexRows, summary } = ticket;
+  const [exporting, setExporting] = useState<"csv" | "pdf" | null>(null);
+
+  const today = new Date().toISOString().slice(0, 10);
+  const fileBase = `ticket-${ticket.tradeNum}-${today}`;
+
+  function handleExportCSV() {
+    const rows = buildAuditRows(ticket);
+    downloadCSV(rows, `${fileBase}.csv`);
+  }
+
+  async function handleExportPDF() {
+    setExporting("pdf");
+    try {
+      const rows = buildAuditRows(ticket);
+      await downloadPDF(rows, `${fileBase}.pdf`, `Trading Ticket ${ticket.tradeNum} — Audit Trail`);
+    } finally {
+      setExporting(null);
+    }
+  }
 
   // Re-derive intermediate values for detailed audit
   const goldTrades = stonexRows.filter(
@@ -231,9 +373,32 @@ function AuditTrail({ ticket }: { ticket: TicketResult }) {
 
   return (
     <div className="space-y-3">
-      <h2 className="text-lg font-semibold text-[var(--color-text-primary)]">
-        Ticket Audit Trail
-      </h2>
+      <div className="flex items-center justify-between">
+        <h2 className="text-lg font-semibold text-[var(--color-text-primary)]">
+          Ticket Audit Trail
+        </h2>
+        <div className="flex items-center gap-2">
+          <button
+            onClick={handleExportCSV}
+            className="inline-flex items-center gap-1.5 rounded-lg border border-[var(--color-border)] px-3 py-1.5 text-xs font-medium text-[var(--color-text-secondary)] hover:bg-[var(--color-background)] hover:text-[var(--color-text-primary)] transition-colors"
+          >
+            <Download className="h-3.5 w-3.5" />
+            CSV
+          </button>
+          <button
+            onClick={handleExportPDF}
+            disabled={exporting === "pdf"}
+            className="inline-flex items-center gap-1.5 rounded-lg border border-[var(--color-border)] px-3 py-1.5 text-xs font-medium text-[var(--color-text-secondary)] hover:bg-[var(--color-background)] hover:text-[var(--color-text-primary)] disabled:opacity-50 transition-colors"
+          >
+            {exporting === "pdf" ? (
+              <div className="h-3.5 w-3.5 animate-spin rounded-full border-2 border-current border-t-transparent" />
+            ) : (
+              <Download className="h-3.5 w-3.5" />
+            )}
+            PDF
+          </button>
+        </div>
+      </div>
       <div className="rounded-xl border border-[var(--color-border)] bg-[var(--color-surface)] p-6">
         <p className="text-xs text-[var(--color-text-muted)] mb-4">
           Detailed step-by-step breakdown of all calculations for Trade{" "}
