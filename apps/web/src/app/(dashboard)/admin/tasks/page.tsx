@@ -452,12 +452,15 @@ export default function DevTasksPage() {
         header: "Title",
         size: 300,
         cell: ({ getValue, row }) => (
-          <div>
-            <span className="font-medium text-[var(--color-text-primary)]">
+          <div className="min-w-0">
+            <button
+              onClick={() => setEditTask(row.original)}
+              className="font-medium text-[var(--color-primary)] hover:underline text-left"
+            >
               {getValue() as string}
-            </span>
+            </button>
             {row.original.description && (
-              <p className="mt-0.5 text-xs text-[var(--color-text-muted)] line-clamp-1">
+              <p className="mt-0.5 text-xs text-[var(--color-text-muted)] whitespace-normal break-words">
                 {row.original.description}
               </p>
             )}

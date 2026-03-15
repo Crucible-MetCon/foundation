@@ -259,8 +259,8 @@ export function DataTable<TData>({
                     return (
                       <td
                         key={cell.id}
-                        className={`${cellPadding} ${fontSize} text-[var(--color-text-primary)] whitespace-nowrap ${
-                          isRight ? "text-right tabular-nums" : ""
+                        className={`${cellPadding} ${fontSize} text-[var(--color-text-primary)] ${
+                          isRight ? "text-right tabular-nums whitespace-nowrap" : ""
                         }`}
                       >
                         {flexRender(cell.column.columnDef.cell, cell.getContext())}
