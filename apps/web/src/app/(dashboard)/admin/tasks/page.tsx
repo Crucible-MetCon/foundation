@@ -444,6 +444,16 @@ export default function DevTasksPage() {
   const tasks = data?.tasks ?? [];
   const userOptions = usersData?.users ?? [];
 
+  // Split into active vs completed, both sorted newest-first
+  const sortNewest = (a: TaskRow, b: TaskRow) =>
+    new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime();
+  const activeTasks = tasks
+    .filter((t) => t.status !== "completed")
+    .sort(sortNewest);
+  const completedTasks = tasks
+    .filter((t) => t.status === "completed")
+    .sort(sortNewest);
+
   // Table columns
   const columns = useMemo<ColumnDef<TaskRow, any>[]>(
     () => [
@@ -582,22 +592,46 @@ export default function DevTasksPage() {
         </button>
       }
     >
-      <DataTable
-        columns={columns}
-        data={tasks}
-        loading={isLoading}
-        paginate
-        pageSize={25}
-        searchable
-        searchColumn="title"
-        searchPlaceholder="Search tasks..."
-        stickyHeader
-        maxHeight="calc(100vh - 300px)"
-        emptyMessage={
-          error ? "Failed to load tasks." : "No tasks found."
-        }
-        initialSorting={[{ id: "createdAt", desc: true }]}
-      />
+      {/* Active Tasks */}
+      <div>
+        <h3 className="mb-2 text-sm font-semibold text-[var(--color-text-secondary)] uppercase tracking-wide">
+          Active Tasks ({activeTasks.length})
+        </h3>
+        <DataTable
+          columns={columns}
+          data={activeTasks}
+          loading={isLoading}
+          paginate
+          pageSize={25}
+          searchable
+          searchColumn="title"
+          searchPlaceholder="Search active tasks..."
+          stickyHeader
+          maxHeight="calc(100vh - 500px)"
+          emptyMessage={
+            error ? "Failed to load tasks." : "No active tasks."
+          }
+          initialSorting={[{ id: "createdAt", desc: true }]}
+        />
+      </div>
+
+      {/* Completed Tasks */}
+      <div className="mt-8">
+        <h3 className="mb-2 text-sm font-semibold text-[var(--color-text-secondary)] uppercase tracking-wide">
+          Completed Tasks ({completedTasks.length})
+        </h3>
+        <DataTable
+          columns={columns}
+          data={completedTasks}
+          loading={isLoading}
+          paginate
+          pageSize={10}
+          stickyHeader
+          maxHeight="400px"
+          emptyMessage="No completed tasks yet."
+          initialSorting={[{ id: "createdAt", desc: true }]}
+        />
+      </div>
 
       {/* Create Task Modal */}
       <Modal
