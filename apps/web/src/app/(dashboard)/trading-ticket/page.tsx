@@ -930,8 +930,8 @@ export default function TradingTicketPage() {
     []
   );
 
-  // ── StoneX columns ──
-  const stonexColumns = useMemo<ColumnDef<TicketStonexRow, any>[]>(
+  // ── Base StoneX columns ──
+  const baseStonexColumns = useMemo<ColumnDef<TicketStonexRow, any>[]>(
     () => [
       {
         accessorKey: "docNumber",
@@ -1002,6 +1002,48 @@ export default function TradingTicketPage() {
     []
   );
 
+  // ── Metal columns (with USD Value) ──
+  const metalColumns = useMemo<ColumnDef<TicketStonexRow, any>[]>(
+    () => [
+      ...baseStonexColumns.slice(0, 8), // Doc# through Price
+      {
+        id: "usdValue",
+        header: "USD Value",
+        size: 130,
+        meta: { align: "right" },
+        accessorFn: (row: TicketStonexRow) => row.quantity * row.price,
+        cell: ({ getValue }) => (
+          <span className="tabular-nums font-medium">
+            {fmt(getValue() as number, 2)}
+          </span>
+        ),
+      },
+      baseStonexColumns[8], // Narration
+    ],
+    [baseStonexColumns]
+  );
+
+  // ── Currency columns (with ZAR Value) ──
+  const currencyColumns = useMemo<ColumnDef<TicketStonexRow, any>[]>(
+    () => [
+      ...baseStonexColumns.slice(0, 8), // Doc# through Price
+      {
+        id: "zarValue",
+        header: "ZAR Value",
+        size: 130,
+        meta: { align: "right" },
+        accessorFn: (row: TicketStonexRow) => row.quantity * row.price,
+        cell: ({ getValue }) => (
+          <span className="tabular-nums font-medium">
+            {fmt(getValue() as number, 2)}
+          </span>
+        ),
+      },
+      baseStonexColumns[8], // Narration
+    ],
+    [baseStonexColumns]
+  );
+
   // ── TradeMC totals row ──
   const tmTotals = useMemo(() => {
     if (!ticket?.tmRows.length) return null;
@@ -1017,6 +1059,54 @@ export default function TradingTicketPage() {
     const waFx = totalUsd > 0 ? totalZarGross / totalUsd : 0;
     return { totalWeightG, totalWeightOz, waUsdPerOz, waFx, totalUsd, totalZarNet };
   }, [ticket?.tmRows]);
+
+  // ── Metal / Currency split helpers ──
+  const METAL_PREFIXES = ["XAU", "XAG", "XPT", "XPD"];
+  const isMetalSymbol = (sym: string) =>
+    METAL_PREFIXES.some((p) => sym.toUpperCase().startsWith(p));
+
+  const metalRows = useMemo(
+    () => (ticket?.stonexRows ?? []).filter((r) => isMetalSymbol(r.symbol)),
+    [ticket?.stonexRows]
+  );
+  const currencyRows = useMemo(
+    () => (ticket?.stonexRows ?? []).filter((r) => !isMetalSymbol(r.symbol)),
+    [ticket?.stonexRows]
+  );
+
+  // ── Metal totals (SELL adds, BUY subtracts) ──
+  const metalTotals = useMemo(() => {
+    if (metalRows.length === 0) return null;
+    let totalQty = 0;
+    let totalUsdValue = 0;
+    for (const r of metalRows) {
+      const sign = r.side === "BUY" ? -1 : 1;
+      totalQty += sign * r.quantity;
+      totalUsdValue += sign * r.quantity * r.price;
+    }
+    return {
+      totalQty,
+      waPrice: totalQty !== 0 ? totalUsdValue / totalQty : 0,
+      totalUsdValue,
+    };
+  }, [metalRows]);
+
+  // ── Currency totals (SELL adds, BUY subtracts) ──
+  const currencyTotals = useMemo(() => {
+    if (currencyRows.length === 0) return null;
+    let totalQty = 0;
+    let totalZarValue = 0;
+    for (const r of currencyRows) {
+      const sign = r.side === "BUY" ? -1 : 1;
+      totalQty += sign * r.quantity;
+      totalZarValue += sign * r.quantity * r.price;
+    }
+    return {
+      totalQty,
+      waPrice: totalQty !== 0 ? totalZarValue / totalQty : 0,
+      totalZarValue,
+    };
+  }, [currencyRows]);
 
   return (
     <PageShell
@@ -1097,62 +1187,132 @@ export default function TradingTicketPage() {
             compact
             paginate={false}
             emptyMessage="No TradeMC bookings found for this trade."
+            footer={
+              tmTotals ? (
+                <tr>
+                  <td className="px-2 py-1.5 text-xs font-semibold text-[var(--color-text-primary)] whitespace-nowrap">
+                    Totals
+                  </td>
+                  <td className="px-2 py-1.5 text-xs font-semibold text-[var(--color-text-primary)] whitespace-nowrap text-right tabular-nums">
+                    {fmt(tmTotals.totalWeightG, 2)}
+                  </td>
+                  <td className="px-2 py-1.5 text-xs font-semibold text-[var(--color-text-primary)] whitespace-nowrap text-right tabular-nums">
+                    {fmt(tmTotals.totalWeightOz, 4)}
+                  </td>
+                  <td className="px-2 py-1.5 text-xs font-semibold text-[var(--color-text-secondary)] whitespace-nowrap text-right tabular-nums">
+                    {fmt(tmTotals.waUsdPerOz, 2)}
+                  </td>
+                  <td className="px-2 py-1.5 text-xs font-semibold text-[var(--color-text-secondary)] whitespace-nowrap text-right tabular-nums">
+                    {fmt(tmTotals.waFx, 4)}
+                  </td>
+                  <td className="px-2 py-1.5 text-xs font-semibold text-[var(--color-text-primary)] whitespace-nowrap text-right tabular-nums">
+                    {fmt(tmTotals.totalUsd, 2)}
+                  </td>
+                  <td className="px-2 py-1.5" />
+                  <td className="px-2 py-1.5" />
+                  <td className="px-2 py-1.5 text-xs font-semibold text-[var(--color-text-primary)] whitespace-nowrap text-right tabular-nums">
+                    {fmt(tmTotals.totalZarNet, 2)}
+                  </td>
+                </tr>
+              ) : undefined
+            }
           />
-          {/* Totals row */}
-          {tmTotals && (
-            <div className="overflow-auto rounded-xl border border-[var(--color-border)] bg-[var(--color-background)]">
-              <table className="w-full border-collapse">
-                <tbody>
-                  <tr>
-                    <td className="px-2 py-1.5 text-xs font-semibold text-[var(--color-text-primary)] whitespace-nowrap" style={{ width: 200 }}>
-                      Totals
-                    </td>
-                    <td className="px-2 py-1.5 text-xs font-semibold text-[var(--color-text-primary)] whitespace-nowrap text-right tabular-nums" style={{ width: 110 }}>
-                      {fmt(tmTotals.totalWeightG, 2)}
-                    </td>
-                    <td className="px-2 py-1.5 text-xs font-semibold text-[var(--color-text-primary)] whitespace-nowrap text-right tabular-nums" style={{ width: 120 }}>
-                      {fmt(tmTotals.totalWeightOz, 4)}
-                    </td>
-                    <td className="px-2 py-1.5 text-xs font-semibold text-[var(--color-text-secondary)] whitespace-nowrap text-right tabular-nums" style={{ width: 120 }}>
-                      {fmt(tmTotals.waUsdPerOz, 2)}
-                    </td>
-                    <td className="px-2 py-1.5 text-xs font-semibold text-[var(--color-text-secondary)] whitespace-nowrap text-right tabular-nums" style={{ width: 110 }}>
-                      {fmt(tmTotals.waFx, 4)}
-                    </td>
-                    <td className="px-2 py-1.5 text-xs font-semibold text-[var(--color-text-primary)] whitespace-nowrap text-right tabular-nums" style={{ width: 120 }}>
-                      {fmt(tmTotals.totalUsd, 2)}
-                    </td>
-                    <td className="px-2 py-1.5 text-xs font-semibold text-[var(--color-text-secondary)] whitespace-nowrap text-right" style={{ width: 120 }}>
-                      {/* ZAR Value placeholder — totals row skips this column */}
-                    </td>
-                    <td className="px-2 py-1.5 text-xs font-semibold text-[var(--color-text-secondary)] whitespace-nowrap text-right" style={{ width: 100 }}>
-                      {/* Refining % placeholder */}
-                    </td>
-                    <td className="px-2 py-1.5 text-xs font-semibold text-[var(--color-text-primary)] whitespace-nowrap text-right tabular-nums" style={{ width: 120 }}>
-                      {fmt(tmTotals.totalZarNet, 2)}
-                    </td>
-                  </tr>
-                </tbody>
-              </table>
-            </div>
-          )}
         </div>
       )}
 
-      {/* StoneX Trades section */}
+      {/* StoneX / PMX Trades section */}
       {ticket && (
         <div className="space-y-3">
           <h2 className="text-lg font-semibold text-[var(--color-text-primary)]">
             StoneX / PMX Trades
           </h2>
-          <DataTable
-            columns={stonexColumns}
-            data={ticket.stonexRows}
-            loading={false}
-            compact
-            paginate={false}
-            emptyMessage="No StoneX/PMX trades found for this trade."
-          />
+
+          {/* Metal Trades */}
+          {metalRows.length > 0 && (
+            <div>
+              <h3 className="mb-2 text-xs font-semibold uppercase tracking-wider text-[var(--color-text-secondary)]">
+                Metal Trades
+              </h3>
+              <DataTable
+                columns={metalColumns}
+                data={metalRows}
+                loading={false}
+                compact
+                paginate={false}
+                emptyMessage="No metal trades."
+                footer={
+                  metalTotals ? (
+                    <tr>
+                      <td className="px-2 py-1.5 text-xs font-semibold text-[var(--color-text-primary)] whitespace-nowrap">
+                        Totals
+                      </td>
+                      <td className="px-2 py-1.5" />
+                      <td className="px-2 py-1.5" />
+                      <td className="px-2 py-1.5" />
+                      <td className="px-2 py-1.5" />
+                      <td className="px-2 py-1.5 text-xs font-semibold text-[var(--color-text-primary)] whitespace-nowrap text-right tabular-nums">
+                        {fmt(metalTotals.totalQty, 4)}
+                      </td>
+                      <td className="px-2 py-1.5 text-xs font-semibold text-[var(--color-text-secondary)] whitespace-nowrap text-right tabular-nums">
+                        {fmt(metalTotals.waPrice, 4)}
+                      </td>
+                      <td className="px-2 py-1.5 text-xs font-semibold text-[var(--color-text-primary)] whitespace-nowrap text-right tabular-nums">
+                        {fmt(metalTotals.totalUsdValue, 2)}
+                      </td>
+                      <td className="px-2 py-1.5" />
+                    </tr>
+                  ) : undefined
+                }
+              />
+            </div>
+          )}
+
+          {/* Currency Trades */}
+          {currencyRows.length > 0 && (
+            <div>
+              <h3 className="mb-2 text-xs font-semibold uppercase tracking-wider text-[var(--color-text-secondary)]">
+                Currency Trades
+              </h3>
+              <DataTable
+                columns={currencyColumns}
+                data={currencyRows}
+                loading={false}
+                compact
+                paginate={false}
+                emptyMessage="No currency trades."
+                footer={
+                  currencyTotals ? (
+                    <tr>
+                      <td className="px-2 py-1.5 text-xs font-semibold text-[var(--color-text-primary)] whitespace-nowrap">
+                        Totals
+                      </td>
+                      <td className="px-2 py-1.5" />
+                      <td className="px-2 py-1.5" />
+                      <td className="px-2 py-1.5" />
+                      <td className="px-2 py-1.5" />
+                      <td className="px-2 py-1.5 text-xs font-semibold text-[var(--color-text-primary)] whitespace-nowrap text-right tabular-nums">
+                        {fmt(currencyTotals.totalQty, 4)}
+                      </td>
+                      <td className="px-2 py-1.5 text-xs font-semibold text-[var(--color-text-secondary)] whitespace-nowrap text-right tabular-nums">
+                        {fmt(currencyTotals.waPrice, 4)}
+                      </td>
+                      <td className="px-2 py-1.5 text-xs font-semibold text-[var(--color-text-primary)] whitespace-nowrap text-right tabular-nums">
+                        {fmt(currencyTotals.totalZarValue, 2)}
+                      </td>
+                      <td className="px-2 py-1.5" />
+                    </tr>
+                  ) : undefined
+                }
+              />
+            </div>
+          )}
+
+          {/* Fallback if no trades at all */}
+          {metalRows.length === 0 && currencyRows.length === 0 && (
+            <p className="text-xs text-[var(--color-text-muted)] italic">
+              No StoneX/PMX trades found for this trade.
+            </p>
+          )}
         </div>
       )}
 
