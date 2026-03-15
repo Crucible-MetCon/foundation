@@ -2,7 +2,7 @@
 
 import { useState, useMemo } from "react";
 import { type ColumnDef } from "@tanstack/react-table";
-import { Search, FileText } from "lucide-react";
+import { Search, FileText, ChevronDown } from "lucide-react";
 import { PageShell } from "@/components/layout/page-shell";
 import { DataTable, numCell } from "@/components/ui/data-table";
 import { fmt, fmtDate } from "@/lib/utils";
@@ -91,6 +91,566 @@ function StatCard({
       {sub && (
         <p className="mt-0.5 text-xs text-[var(--color-text-muted)]">{sub}</p>
       )}
+    </div>
+  );
+}
+
+// ── Constants (must match domain) ──
+const GRAMS_PER_TROY_OUNCE = 31.1035;
+
+// ── Audit Trail helper ──
+
+/** Format a number for audit display with full precision */
+function auditNum(val: number, decimals = 2): string {
+  return val.toLocaleString("en-US", {
+    minimumFractionDigits: decimals,
+    maximumFractionDigits: decimals,
+  });
+}
+
+/** A labelled calculation row: description on the left, formula + result on the right */
+function CalcRow({
+  label,
+  formula,
+  result,
+  indent = 0,
+  bold = false,
+  highlight = false,
+}: {
+  label: string;
+  formula?: string;
+  result: string;
+  indent?: number;
+  bold?: boolean;
+  highlight?: boolean;
+}) {
+  return (
+    <div
+      className={`flex items-start justify-between gap-4 py-1 ${indent ? "pl-4" : ""} ${highlight ? "bg-[var(--color-background)] rounded-md px-2 -mx-2" : ""}`}
+    >
+      <span
+        className={`text-xs ${bold ? "font-semibold text-[var(--color-text-primary)]" : "text-[var(--color-text-secondary)]"} leading-relaxed`}
+      >
+        {label}
+      </span>
+      <span className="flex-shrink-0 text-right">
+        {formula && (
+          <span className="text-[10px] text-[var(--color-text-muted)] font-mono mr-3">
+            {formula}
+          </span>
+        )}
+        <span
+          className={`text-xs tabular-nums ${bold ? "font-semibold text-[var(--color-text-primary)]" : "font-medium text-[var(--color-text-primary)]"}`}
+        >
+          {result}
+        </span>
+      </span>
+    </div>
+  );
+}
+
+function AuditSection({
+  title,
+  number,
+  children,
+  defaultOpen = true,
+}: {
+  title: string;
+  number: number;
+  children: React.ReactNode;
+  defaultOpen?: boolean;
+}) {
+  const [open, setOpen] = useState(defaultOpen);
+  return (
+    <div className="border-b border-[var(--color-border)] last:border-b-0">
+      <button
+        onClick={() => setOpen(!open)}
+        className="flex w-full items-center gap-2 py-3 text-left hover:bg-[var(--color-background)] transition-colors rounded-lg px-2 -mx-2"
+      >
+        <span className="flex h-5 w-5 items-center justify-center rounded-full bg-[var(--color-primary)] text-[10px] font-bold text-white flex-shrink-0">
+          {number}
+        </span>
+        <span className="text-sm font-semibold text-[var(--color-text-primary)] flex-1">
+          {title}
+        </span>
+        <ChevronDown
+          className={`h-4 w-4 text-[var(--color-text-muted)] transition-transform ${open ? "rotate-180" : ""}`}
+        />
+      </button>
+      {open && <div className="pb-4 space-y-1">{children}</div>}
+    </div>
+  );
+}
+
+function AuditTrail({ ticket }: { ticket: TicketResult }) {
+  const { tmRows, stonexRows, summary } = ticket;
+
+  // Re-derive intermediate values for detailed audit
+  const goldTrades = stonexRows.filter(
+    (t) => t.symbol.replace(/[/\- ]/g, "").startsWith("XAU")
+  );
+  const fxTrades = stonexRows.filter(
+    (t) => t.symbol.replace(/[/\- ]/g, "").startsWith("USD")
+  );
+
+  // Gold WA calculation details
+  const goldDetails = goldTrades.map((t) => ({
+    ...t,
+    notional: t.quantity * t.price,
+  }));
+  const goldTotalQty = goldDetails.reduce((s, t) => s + t.quantity, 0);
+  const goldTotalVal = goldDetails.reduce((s, t) => s + t.notional, 0);
+
+  // FX WA calculation details
+  const fxDetails = fxTrades.map((t) => ({
+    ...t,
+    notional: t.quantity * t.price,
+  }));
+  const fxTotalQty = fxDetails.reduce((s, t) => s + t.quantity, 0);
+  const fxTotalVal = fxDetails.reduce((s, t) => s + t.notional, 0);
+
+  // Gold signed oz
+  let goldSignedOz = 0;
+  for (const t of goldTrades) {
+    goldSignedOz += t.side === "BUY" ? t.quantity : -t.quantity;
+  }
+
+  // TM totals
+  const tmTotalWeightG = tmRows.reduce((s, r) => s + r.weightG, 0);
+  const tmTotalWeightOz = tmTotalWeightG / GRAMS_PER_TROY_OUNCE;
+  const tmTotalUsd = tmRows.reduce((s, r) => s + r.usdValue, 0);
+  const tmTotalZarGross = tmRows.reduce((s, r) => s + r.zarValue, 0);
+  const tmTotalZarNet = tmRows.reduce((s, r) => s + r.zarValueLessRefining, 0);
+
+  // StoneX USD cash
+  let stonexCashUsd = 0;
+  for (const t of goldTrades) {
+    stonexCashUsd +=
+      t.side === "SELL" ? t.quantity * t.price : -(t.quantity * t.price);
+  }
+
+  return (
+    <div className="space-y-3">
+      <h2 className="text-lg font-semibold text-[var(--color-text-primary)]">
+        Ticket Audit Trail
+      </h2>
+      <div className="rounded-xl border border-[var(--color-border)] bg-[var(--color-surface)] p-6">
+        <p className="text-xs text-[var(--color-text-muted)] mb-4">
+          Detailed step-by-step breakdown of all calculations for Trade{" "}
+          <span className="font-semibold">{ticket.tradeNum}</span>. Every
+          intermediate value is shown to allow full reconciliation.
+        </p>
+
+        {/* ── 1. Input Data Summary ── */}
+        <AuditSection title="Input Data Summary" number={1}>
+          <p className="text-xs text-[var(--color-text-muted)] mb-2">
+            Raw data loaded from the database for this ticket.
+          </p>
+          <CalcRow
+            label="TradeMC bookings (buy side)"
+            result={`${tmRows.length} booking${tmRows.length !== 1 ? "s" : ""}`}
+          />
+          <CalcRow
+            label="StoneX/PMX trades (sell side)"
+            result={`${stonexRows.length} trade${stonexRows.length !== 1 ? "s" : ""}`}
+          />
+          <CalcRow
+            label="  └ XAUUSD (gold) trades"
+            result={`${goldTrades.length}`}
+            indent={1}
+          />
+          <CalcRow
+            label="  └ USDZAR (FX) trades"
+            result={`${fxTrades.length}`}
+            indent={1}
+          />
+          <CalcRow
+            label="Conversion constant"
+            result={`${GRAMS_PER_TROY_OUNCE} g/troy oz`}
+          />
+        </AuditSection>
+
+        {/* ── 2. TradeMC Valuation (per-row) ── */}
+        <AuditSection title="TradeMC Valuation (Buy Side)" number={2}>
+          <p className="text-xs text-[var(--color-text-muted)] mb-2">
+            Each booking is valued by converting weight to troy ounces,
+            multiplying by the booked USD price, then converting to ZAR using
+            the confirmed FX rate, and deducting the refining fee.
+          </p>
+
+          {tmRows.map((row, i) => (
+            <div
+              key={i}
+              className="border border-[var(--color-border)] rounded-lg p-3 mb-3"
+            >
+              <p className="text-xs font-semibold text-[var(--color-text-primary)] mb-2">
+                Booking {i + 1}: {row.companyName}
+              </p>
+
+              <CalcRow
+                label="Weight"
+                result={`${auditNum(row.weightG, 2)} g`}
+              />
+              <CalcRow
+                label="Weight in troy ounces"
+                formula={`${auditNum(row.weightG, 2)} ÷ ${GRAMS_PER_TROY_OUNCE}`}
+                result={`${auditNum(row.weightOz, 6)} oz`}
+              />
+              <CalcRow
+                label="Booked gold price"
+                result={`$${auditNum(row.usdPerOzBooked, 2)} /oz`}
+              />
+              <CalcRow
+                label="USD value"
+                formula={`${auditNum(row.weightOz, 6)} oz × $${auditNum(row.usdPerOzBooked, 2)}`}
+                result={`$${auditNum(row.usdValue, 2)}`}
+              />
+              <CalcRow
+                label="FX rate (ZAR/USD)"
+                result={auditNum(row.fxRate, 4)}
+              />
+              <CalcRow
+                label="ZAR value (gross)"
+                formula={`$${auditNum(row.usdValue, 2)} × ${auditNum(row.fxRate, 4)}`}
+                result={`R ${auditNum(row.zarValue, 2)}`}
+              />
+              <CalcRow
+                label="Refining rate"
+                result={`${auditNum(row.refiningRate, 2)}%`}
+              />
+              <CalcRow
+                label="Refining deduction"
+                formula={`R ${auditNum(row.zarValue, 2)} × ${auditNum(row.refiningRate, 2)}%`}
+                result={`R ${auditNum(row.zarValue * (row.refiningRate / 100), 2)}`}
+              />
+              <CalcRow
+                label="ZAR value (net of refining)"
+                formula={`R ${auditNum(row.zarValue, 2)} × (1 − ${auditNum(row.refiningRate, 2)}%)`}
+                result={`R ${auditNum(row.zarValueLessRefining, 2)}`}
+                bold
+                highlight
+              />
+            </div>
+          ))}
+
+          {tmRows.length > 1 && (
+            <>
+              <div className="border-t border-[var(--color-border)] mt-2 pt-2">
+                <CalcRow
+                  label="Total weight"
+                  formula={tmRows.map((r) => auditNum(r.weightG, 2) + "g").join(" + ")}
+                  result={`${auditNum(tmTotalWeightG, 2)} g (${auditNum(tmTotalWeightOz, 6)} oz)`}
+                  bold
+                />
+                <CalcRow
+                  label="Total USD value"
+                  formula={tmRows.map((r) => "$" + auditNum(r.usdValue, 2)).join(" + ")}
+                  result={`$${auditNum(tmTotalUsd, 2)}`}
+                  bold
+                />
+                <CalcRow
+                  label="Total ZAR (gross)"
+                  result={`R ${auditNum(tmTotalZarGross, 2)}`}
+                />
+                <CalcRow
+                  label="Total ZAR (net of refining)"
+                  formula={tmRows.map((r) => "R " + auditNum(r.zarValueLessRefining, 2)).join(" + ")}
+                  result={`R ${auditNum(tmTotalZarNet, 2)}`}
+                  bold
+                  highlight
+                />
+              </div>
+            </>
+          )}
+        </AuditSection>
+
+        {/* ── 3. StoneX Weighted Averages ── */}
+        <AuditSection title="StoneX Weighted Averages" number={3}>
+          <p className="text-xs text-[var(--color-text-muted)] mb-2">
+            Weighted average prices are calculated from StoneX/PMX trades.
+            Each trade&apos;s notional (quantity × price) is summed, then
+            divided by total quantity.
+          </p>
+
+          {/* Gold WA */}
+          <p className="text-xs font-semibold text-[var(--color-text-primary)] mt-3 mb-1">
+            Gold Weighted Average ($/oz)
+          </p>
+          {goldDetails.map((t, i) => (
+            <CalcRow
+              key={`gold-${i}`}
+              label={`${t.side} ${auditNum(t.quantity, 4)} oz @ $${auditNum(t.price, 2)}`}
+              formula={`${auditNum(t.quantity, 4)} × $${auditNum(t.price, 2)}`}
+              result={`$${auditNum(t.notional, 2)}`}
+              indent={1}
+            />
+          ))}
+          <CalcRow
+            label="Sum of notional values"
+            result={`$${auditNum(goldTotalVal, 2)}`}
+          />
+          <CalcRow
+            label="Sum of quantities"
+            result={`${auditNum(goldTotalQty, 4)} oz`}
+          />
+          <CalcRow
+            label="Gold Weighted Average"
+            formula={`$${auditNum(goldTotalVal, 2)} ÷ ${auditNum(goldTotalQty, 4)}`}
+            result={`$${auditNum(summary.goldWaUsdOz, 2)} /oz`}
+            bold
+            highlight
+          />
+
+          {/* FX WA */}
+          <p className="text-xs font-semibold text-[var(--color-text-primary)] mt-4 mb-1">
+            FX Weighted Average (ZAR/USD)
+          </p>
+          {fxDetails.map((t, i) => (
+            <CalcRow
+              key={`fx-${i}`}
+              label={`${t.side} $${auditNum(t.quantity, 2)} @ R ${auditNum(t.price, 4)}`}
+              formula={`$${auditNum(t.quantity, 2)} × R ${auditNum(t.price, 4)}`}
+              result={`R ${auditNum(t.notional, 2)}`}
+              indent={1}
+            />
+          ))}
+          {fxTrades.length > 0 && (
+            <>
+              <CalcRow
+                label="Sum of notional values"
+                result={`R ${auditNum(fxTotalVal, 2)}`}
+              />
+              <CalcRow
+                label="Sum of quantities"
+                result={`$${auditNum(fxTotalQty, 2)}`}
+              />
+              <CalcRow
+                label="FX Weighted Average"
+                formula={`R ${auditNum(fxTotalVal, 2)} ÷ $${auditNum(fxTotalQty, 2)}`}
+                result={`R ${auditNum(summary.fxWaUsdzar, 4)}`}
+                bold
+                highlight
+              />
+            </>
+          )}
+          {fxTrades.length === 0 && (
+            <p className="text-xs text-[var(--color-text-muted)] italic">
+              No USDZAR trades — FX rate sourced from TradeMC bookings.
+            </p>
+          )}
+        </AuditSection>
+
+        {/* ── 4. Spot Rate Derivation ── */}
+        <AuditSection title="Spot Rate Derivation" number={4}>
+          <p className="text-xs text-[var(--color-text-muted)] mb-2">
+            The spot rate (ZAR per gram) is derived from the weighted average
+            gold price and FX rate, divided by the gram-to-ounce conversion
+            factor.
+          </p>
+          <CalcRow
+            label="Gold WA"
+            result={`$${auditNum(summary.goldWaUsdOz, 2)} /oz`}
+          />
+          <CalcRow
+            label="FX WA"
+            result={`R ${auditNum(summary.fxWaUsdzar, 4)} per USD`}
+          />
+          <CalcRow
+            label="Grams per troy ounce"
+            result={`${GRAMS_PER_TROY_OUNCE}`}
+          />
+          <CalcRow
+            label="Spot ZAR per gram"
+            formula={`($${auditNum(summary.goldWaUsdOz, 2)} × R ${auditNum(summary.fxWaUsdzar, 4)}) ÷ ${GRAMS_PER_TROY_OUNCE}`}
+            result={`R ${auditNum(summary.spotZarPerG, 2)} /g`}
+            bold
+            highlight
+          />
+        </AuditSection>
+
+        {/* ── 5. StoneX USD Cash Flow ── */}
+        <AuditSection title="StoneX USD Cash Flow (Sell Side)" number={5}>
+          <p className="text-xs text-[var(--color-text-muted)] mb-2">
+            The USD cash flow from StoneX gold trades. Selling gold generates
+            USD inflow; buying gold generates USD outflow.
+          </p>
+          {goldTrades.map((t, i) => {
+            const flow =
+              t.side === "SELL"
+                ? t.quantity * t.price
+                : -(t.quantity * t.price);
+            return (
+              <CalcRow
+                key={`usd-${i}`}
+                label={`${t.side} ${auditNum(t.quantity, 4)} oz @ $${auditNum(t.price, 2)}`}
+                formula={`${t.side === "SELL" ? "+" : "−"}(${auditNum(t.quantity, 4)} × $${auditNum(t.price, 2)})`}
+                result={`${flow >= 0 ? "+" : "−"}$${auditNum(Math.abs(flow), 2)}`}
+                indent={1}
+              />
+            );
+          })}
+          <CalcRow
+            label="Net StoneX USD cash flow"
+            result={`${stonexCashUsd >= 0 ? "+" : "−"}$${auditNum(Math.abs(stonexCashUsd), 2)}`}
+          />
+          <CalcRow
+            label="Sell Side USD (absolute)"
+            result={`$${auditNum(summary.sellSideUsd, 2)}`}
+            bold
+            highlight
+          />
+          <CalcRow
+            label="Buy Side USD (TradeMC total)"
+            result={`$${auditNum(summary.buySideUsd, 2)}`}
+            bold
+          />
+          <CalcRow
+            label="USD Profit"
+            formula={`$${auditNum(summary.sellSideUsd, 2)} − $${auditNum(summary.buySideUsd, 2)}`}
+            result={`$${auditNum(summary.profitUsd, 2)}`}
+            bold
+            highlight
+          />
+        </AuditSection>
+
+        {/* ── 6. Control Account (Metal Exposure) ── */}
+        <AuditSection title="Control Account (Metal Exposure)" number={6}>
+          <p className="text-xs text-[var(--color-text-muted)] mb-2">
+            The control account tracks unhedged metal exposure — metal bought
+            from clients that hasn&apos;t been sold (or extra metal bought) on
+            StoneX. Positive = long exposure, negative = short exposure.
+          </p>
+          <CalcRow
+            label="TradeMC total weight (bought from clients)"
+            result={`+${auditNum(tmTotalWeightG, 2)} g (+${auditNum(tmTotalWeightOz, 6)} oz)`}
+          />
+          <CalcRow
+            label="StoneX net gold position (signed oz)"
+            formula={goldTrades
+              .map(
+                (t) =>
+                  `${t.side === "BUY" ? "+" : "−"}${auditNum(t.quantity, 4)}`
+              )
+              .join(" ")}
+            result={`${goldSignedOz >= 0 ? "+" : ""}${auditNum(goldSignedOz, 4)} oz`}
+          />
+          <CalcRow
+            label="StoneX net in grams"
+            formula={`${auditNum(goldSignedOz, 4)} oz × ${GRAMS_PER_TROY_OUNCE}`}
+            result={`${goldSignedOz * GRAMS_PER_TROY_OUNCE >= 0 ? "+" : ""}${auditNum(goldSignedOz * GRAMS_PER_TROY_OUNCE, 2)} g`}
+          />
+          <CalcRow
+            label="Control Account (grams)"
+            formula={`${auditNum(tmTotalWeightG, 2)} g + (${auditNum(goldSignedOz, 4)} oz × ${GRAMS_PER_TROY_OUNCE})`}
+            result={`${auditNum(summary.controlAccountG, 2)} g`}
+            bold
+            highlight
+          />
+          <CalcRow
+            label="Control Account (oz)"
+            formula={`${auditNum(summary.controlAccountG, 2)} ÷ ${GRAMS_PER_TROY_OUNCE}`}
+            result={`${auditNum(summary.controlAccountOz, 4)} oz`}
+          />
+          <CalcRow
+            label="Control Account (ZAR)"
+            formula={`${auditNum(summary.controlAccountG, 2)} g × R ${auditNum(summary.spotZarPerG, 2)}/g`}
+            result={`R ${auditNum(summary.controlAccountZar, 2)}`}
+            bold
+          />
+        </AuditSection>
+
+        {/* ── 7. ZAR Position & Sell Side ── */}
+        <AuditSection title="ZAR Position (Sell Side Valuation)" number={7}>
+          <p className="text-xs text-[var(--color-text-muted)] mb-2">
+            The ZAR sell side is computed as the StoneX ZAR flow (total traded
+            weight valued at spot rate) plus the ZAR value of any remaining
+            metal in the control account.
+          </p>
+          <CalcRow
+            label="StoneX ZAR flow"
+            formula={`${auditNum(tmTotalWeightG, 2)} g × R ${auditNum(summary.spotZarPerG, 2)}/g`}
+            result={`R ${auditNum(summary.stonexZarFlow, 2)}`}
+          />
+          <CalcRow
+            label="Control Account ZAR value"
+            result={`R ${auditNum(summary.controlAccountZar, 2)}`}
+          />
+          <CalcRow
+            label="Sell Side ZAR"
+            formula={`R ${auditNum(summary.stonexZarFlow, 2)} + R ${auditNum(summary.controlAccountZar, 2)}`}
+            result={`R ${auditNum(summary.sellSideZar, 2)}`}
+            bold
+            highlight
+          />
+          <CalcRow
+            label="Buy Side ZAR (TradeMC net of refining)"
+            result={`R ${auditNum(summary.buySideZar, 2)}`}
+            bold
+          />
+        </AuditSection>
+
+        {/* ── 8. Profit / Loss Calculation ── */}
+        <AuditSection title="Profit / Loss Calculation" number={8}>
+          <p className="text-xs text-[var(--color-text-muted)] mb-2">
+            Profit is the difference between what we receive (sell side) and
+            what we pay (buy side). Positive = profit, negative = loss.
+          </p>
+
+          <p className="text-xs font-semibold text-[var(--color-text-primary)] mt-2 mb-1">
+            USD Profit
+          </p>
+          <CalcRow
+            label="Sell Side USD"
+            result={`$${auditNum(summary.sellSideUsd, 2)}`}
+          />
+          <CalcRow
+            label="Buy Side USD"
+            result={`$${auditNum(summary.buySideUsd, 2)}`}
+          />
+          <CalcRow
+            label="Profit (USD)"
+            formula={`$${auditNum(summary.sellSideUsd, 2)} − $${auditNum(summary.buySideUsd, 2)}`}
+            result={`$${auditNum(summary.profitUsd, 2)}`}
+            bold
+            highlight
+          />
+
+          <p className="text-xs font-semibold text-[var(--color-text-primary)] mt-4 mb-1">
+            ZAR Profit
+          </p>
+          <CalcRow
+            label="Sell Side ZAR"
+            result={`R ${auditNum(summary.sellSideZar, 2)}`}
+          />
+          <CalcRow
+            label="Buy Side ZAR"
+            result={`R ${auditNum(summary.buySideZar, 2)}`}
+          />
+          <CalcRow
+            label="Profit (ZAR)"
+            formula={`R ${auditNum(summary.sellSideZar, 2)} − R ${auditNum(summary.buySideZar, 2)}`}
+            result={`R ${auditNum(summary.profitZar, 2)}`}
+            bold
+            highlight
+          />
+
+          <p className="text-xs font-semibold text-[var(--color-text-primary)] mt-4 mb-1">
+            Profit Margin
+          </p>
+          <CalcRow
+            label="Profit margin on ZAR cost"
+            formula={`(R ${auditNum(summary.profitZar, 2)} ÷ R ${auditNum(summary.buySideZar, 2)}) × 100`}
+            result={`${auditNum(summary.profitPct, 2)}%`}
+            bold
+            highlight
+          />
+          <p className="text-[10px] text-[var(--color-text-muted)] mt-2 italic">
+            A positive margin means the sell-side proceeds exceed the
+            buy-side cost (including refining), resulting in a profit. A
+            negative margin indicates a loss.
+          </p>
+        </AuditSection>
+      </div>
     </div>
   );
 }
@@ -557,6 +1117,9 @@ export default function TradingTicketPage() {
           </div>
         </div>
       )}
+
+      {/* Audit Trail section */}
+      {ticket && <AuditTrail ticket={ticket} />}
     </PageShell>
   );
 }
