@@ -7,3 +7,4 @@ export {
 } from "./trademc";
 export { accountOpeningBalances } from "./opening-balances";
 export { syncJobs } from "./sync-jobs";
+export { devTasks } from "./dev-tasks";

@@ -29,6 +29,18 @@ export default function LoginPage() {
         return;
       }
 
+      // Fire-and-forget background syncs (non-blocking)
+      fetch("/api/pmx/sync", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: "{}",
+      }).catch(() => {});
+      fetch("/api/trademc/sync", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: "{}",
+      }).catch(() => {});
+
       router.push("/dashboard");
       router.refresh();
     } catch {

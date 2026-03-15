@@ -26,6 +26,7 @@ import {
   Loader2,
   LineChart,
   TableProperties,
+  ClipboardList,
 } from "lucide-react";
 
 interface SidebarProps {
@@ -111,7 +112,10 @@ const navSections = [
 
 const adminSection = {
   label: "Admin",
-  items: [{ href: "/admin/users", label: "User Management", icon: Users }],
+  items: [
+    { href: "/admin/users", label: "User Management", icon: Users },
+    { href: "/admin/tasks", label: "Dev Tasks", icon: ClipboardList },
+  ],
 };
 
 export function Sidebar({ user }: SidebarProps) {

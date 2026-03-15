@@ -220,8 +220,9 @@ export async function fetchTrades(
  */
 export async function fetchAllTrades(
   config: TradeMcConfig,
-  maxRecords = 200_000,
+  opts?: { maxRecords?: number; updatedAfter?: string },
 ): Promise<{ ok: boolean; trades: TradeMcTrade[]; error?: string }> {
+  const maxRecords = opts?.maxRecords ?? 200_000;
   const pageSize = 500;
   const all: TradeMcTrade[] = [];
   let lastId = 0;
@@ -229,6 +230,7 @@ export async function fetchAllTrades(
   while (all.length < maxRecords) {
     const result = await fetchTrades(config, {
       afterId: lastId > 0 ? lastId : undefined,
+      updatedAfter: opts?.updatedAfter,
       limit: pageSize,
     });
 

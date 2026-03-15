@@ -61,8 +61,17 @@ export async function POST(request: NextRequest) {
     }
     result.companies = { fetched: compResult.companies.length, synced: companiesInserted };
 
-    // Sync trades
-    const tradeResult = await fetchAllTrades(config);
+    // Sync trades (incremental: only fetch trades updated since last sync)
+    const lastSyncResult = await (db as any).execute(sql`
+      SELECT MAX(synced_at) as last_sync FROM trademc_trades
+    `);
+    const lastSync = (lastSyncResult as any[])?.[0]?.last_sync
+      ? new Date((lastSyncResult as any[])[0].last_sync).toISOString()
+      : undefined;
+
+    const tradeResult = await fetchAllTrades(config, {
+      updatedAfter: lastSync,
+    });
     let tradesInserted = 0;
     if (tradeResult.ok) {
       for (const t of tradeResult.trades) {
@@ -97,7 +106,11 @@ export async function POST(request: NextRequest) {
         tradesInserted++;
       }
     }
-    result.trades = { fetched: tradeResult.trades.length, synced: tradesInserted };
+    result.trades = {
+      fetched: tradeResult.trades.length,
+      synced: tradesInserted,
+      incremental: !!lastSync,
+    };
 
     // Optionally sync weight transactions
     if (includeWeight) {
