@@ -1246,10 +1246,11 @@ export default function TradingTicketPage() {
                       <td className="px-2 py-1.5 text-xs font-semibold text-[var(--color-text-primary)] whitespace-nowrap">
                         Totals
                       </td>
-                      <td className="px-2 py-1.5" />
-                      <td className="px-2 py-1.5" />
-                      <td className="px-2 py-1.5" />
-                      <td className="px-2 py-1.5" />
+                      <td className="px-2 py-1.5" />{/* FNC# */}
+                      <td className="px-2 py-1.5" />{/* Trade Date */}
+                      <td className="px-2 py-1.5" />{/* Value Date */}
+                      <td className="px-2 py-1.5" />{/* Symbol */}
+                      <td className="px-2 py-1.5" />{/* Side */}
                       <td className="px-2 py-1.5 text-xs font-semibold text-[var(--color-text-primary)] whitespace-nowrap text-right tabular-nums">
                         {fmt(metalTotals.totalQty, 4)}
                       </td>
@@ -1259,7 +1260,7 @@ export default function TradingTicketPage() {
                       <td className="px-2 py-1.5 text-xs font-semibold text-[var(--color-text-primary)] whitespace-nowrap text-right tabular-nums">
                         {fmt(metalTotals.totalUsdValue, 2)}
                       </td>
-                      <td className="px-2 py-1.5" />
+                      <td className="px-2 py-1.5" />{/* Narration */}
                     </tr>
                   ) : undefined
                 }
@@ -1286,10 +1287,11 @@ export default function TradingTicketPage() {
                       <td className="px-2 py-1.5 text-xs font-semibold text-[var(--color-text-primary)] whitespace-nowrap">
                         Totals
                       </td>
-                      <td className="px-2 py-1.5" />
-                      <td className="px-2 py-1.5" />
-                      <td className="px-2 py-1.5" />
-                      <td className="px-2 py-1.5" />
+                      <td className="px-2 py-1.5" />{/* FNC# */}
+                      <td className="px-2 py-1.5" />{/* Trade Date */}
+                      <td className="px-2 py-1.5" />{/* Value Date */}
+                      <td className="px-2 py-1.5" />{/* Symbol */}
+                      <td className="px-2 py-1.5" />{/* Side */}
                       <td className="px-2 py-1.5 text-xs font-semibold text-[var(--color-text-primary)] whitespace-nowrap text-right tabular-nums">
                         {fmt(currencyTotals.totalQty, 4)}
                       </td>
@@ -1299,7 +1301,7 @@ export default function TradingTicketPage() {
                       <td className="px-2 py-1.5 text-xs font-semibold text-[var(--color-text-primary)] whitespace-nowrap text-right tabular-nums">
                         {fmt(currencyTotals.totalZarValue, 2)}
                       </td>
-                      <td className="px-2 py-1.5" />
+                      <td className="px-2 py-1.5" />{/* Narration */}
                     </tr>
                   ) : undefined
                 }
