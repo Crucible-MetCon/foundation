@@ -149,48 +149,56 @@ export default function TradingTicketPage() {
         accessorKey: "weightG",
         header: "Weight (g)",
         size: 110,
+        meta: { align: "right" },
         cell: ({ getValue }) => fmt(getValue() as number, 2),
       },
       {
         accessorKey: "weightOz",
         header: "Weight (oz)",
         size: 120,
+        meta: { align: "right" },
         cell: ({ getValue }) => fmt(getValue() as number, 4),
       },
       {
         accessorKey: "usdPerOzBooked",
         header: "$/oz Booked",
         size: 120,
+        meta: { align: "right" },
         cell: ({ getValue }) => fmt(getValue() as number, 2),
       },
       {
         accessorKey: "fxRate",
         header: "FX Rate",
         size: 110,
+        meta: { align: "right" },
         cell: ({ getValue }) => fmt(getValue() as number, 4),
       },
       {
         accessorKey: "usdValue",
         header: "USD Value",
         size: 120,
+        meta: { align: "right" },
         cell: ({ getValue }) => fmt(getValue() as number, 2),
       },
       {
         accessorKey: "zarValue",
         header: "ZAR Value",
         size: 120,
+        meta: { align: "right" },
         cell: ({ getValue }) => fmt(getValue() as number, 2),
       },
       {
         accessorKey: "refiningRate",
         header: "Refining %",
         size: 100,
+        meta: { align: "right" },
         cell: ({ getValue }) => fmt(getValue() as number, 2),
       },
       {
         accessorKey: "zarValueLessRefining",
         header: "ZAR (Net)",
         size: 120,
+        meta: { align: "right" },
         cell: ({ getValue }) => fmt(getValue() as number, 2),
       },
     ],
@@ -250,12 +258,14 @@ export default function TradingTicketPage() {
         accessorKey: "quantity",
         header: "Quantity",
         size: 110,
+        meta: { align: "right" },
         cell: ({ getValue }) => fmt(getValue() as number, 4),
       },
       {
         accessorKey: "price",
         header: "Price",
         size: 110,
+        meta: { align: "right" },
         cell: ({ getValue }) => fmt(getValue() as number, 4),
       },
       {
@@ -372,28 +382,28 @@ export default function TradingTicketPage() {
                     <td className="px-2 py-1.5 text-xs font-semibold text-[var(--color-text-primary)] whitespace-nowrap" style={{ width: 200 }}>
                       Totals
                     </td>
-                    <td className="px-2 py-1.5 text-xs font-semibold text-[var(--color-text-primary)] whitespace-nowrap" style={{ width: 110 }}>
+                    <td className="px-2 py-1.5 text-xs font-semibold text-[var(--color-text-primary)] whitespace-nowrap text-right tabular-nums" style={{ width: 110 }}>
                       {fmt(tmTotals.totalWeightG, 2)}
                     </td>
-                    <td className="px-2 py-1.5 text-xs font-semibold text-[var(--color-text-primary)] whitespace-nowrap" style={{ width: 120 }}>
+                    <td className="px-2 py-1.5 text-xs font-semibold text-[var(--color-text-primary)] whitespace-nowrap text-right tabular-nums" style={{ width: 120 }}>
                       {fmt(tmTotals.totalWeightOz, 4)}
                     </td>
-                    <td className="px-2 py-1.5 text-xs font-semibold text-[var(--color-text-secondary)] whitespace-nowrap" style={{ width: 120 }}>
+                    <td className="px-2 py-1.5 text-xs font-semibold text-[var(--color-text-secondary)] whitespace-nowrap text-right tabular-nums" style={{ width: 120 }}>
                       {fmt(tmTotals.waUsdPerOz, 2)}
                     </td>
-                    <td className="px-2 py-1.5 text-xs font-semibold text-[var(--color-text-secondary)] whitespace-nowrap" style={{ width: 110 }}>
+                    <td className="px-2 py-1.5 text-xs font-semibold text-[var(--color-text-secondary)] whitespace-nowrap text-right tabular-nums" style={{ width: 110 }}>
                       {fmt(tmTotals.waFx, 4)}
                     </td>
-                    <td className="px-2 py-1.5 text-xs font-semibold text-[var(--color-text-primary)] whitespace-nowrap" style={{ width: 120 }}>
+                    <td className="px-2 py-1.5 text-xs font-semibold text-[var(--color-text-primary)] whitespace-nowrap text-right tabular-nums" style={{ width: 120 }}>
                       {fmt(tmTotals.totalUsd, 2)}
                     </td>
-                    <td className="px-2 py-1.5 text-xs font-semibold text-[var(--color-text-secondary)] whitespace-nowrap" style={{ width: 120 }}>
+                    <td className="px-2 py-1.5 text-xs font-semibold text-[var(--color-text-secondary)] whitespace-nowrap text-right" style={{ width: 120 }}>
                       {/* ZAR Value placeholder — totals row skips this column */}
                     </td>
-                    <td className="px-2 py-1.5 text-xs font-semibold text-[var(--color-text-secondary)] whitespace-nowrap" style={{ width: 100 }}>
+                    <td className="px-2 py-1.5 text-xs font-semibold text-[var(--color-text-secondary)] whitespace-nowrap text-right" style={{ width: 100 }}>
                       {/* Refining % placeholder */}
                     </td>
-                    <td className="px-2 py-1.5 text-xs font-semibold text-[var(--color-text-primary)] whitespace-nowrap" style={{ width: 120 }}>
+                    <td className="px-2 py-1.5 text-xs font-semibold text-[var(--color-text-primary)] whitespace-nowrap text-right tabular-nums" style={{ width: 120 }}>
                       {fmt(tmTotals.totalZarNet, 2)}
                     </td>
                   </tr>

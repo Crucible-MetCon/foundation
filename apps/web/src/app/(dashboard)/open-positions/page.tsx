@@ -128,6 +128,7 @@ export default function OpenPositionsPage() {
         accessorKey: "tradeCount",
         header: "Legs",
         size: 70,
+        meta: { align: "right" },
         cell: ({ getValue }) => (
           <span className="tabular-nums">{getValue() as number}</span>
         ),
@@ -142,12 +143,14 @@ export default function OpenPositionsPage() {
         accessorKey: "balanceUsd",
         header: "USD Balance",
         size: 130,
+        meta: { align: "right" },
         cell: ({ getValue }) => numCell(getValue() as number),
       },
       {
         accessorKey: "balanceZar",
         header: "ZAR Balance",
         size: 130,
+        meta: { align: "right" },
         cell: ({ getValue }) => numCell(getValue() as number),
       },
     ],
@@ -211,30 +214,35 @@ export default function OpenPositionsPage() {
         accessorKey: "quantity",
         header: "Quantity",
         size: 110,
+        meta: { align: "right" },
         cell: ({ getValue }) => numCell(getValue() as number, 4),
       },
       {
         accessorKey: "price",
         header: "Price",
         size: 110,
+        meta: { align: "right" },
         cell: ({ getValue }) => numCell(getValue() as number, 4),
       },
       {
         accessorKey: "debitUsd",
         header: "Debit $",
         size: 110,
+        meta: { align: "right" },
         cell: ({ getValue }) => numCell(getValue() as number),
       },
       {
         accessorKey: "creditUsd",
         header: "Credit $",
         size: 110,
+        meta: { align: "right" },
         cell: ({ getValue }) => numCell(getValue() as number),
       },
       {
         accessorKey: "balanceUsd",
         header: "Balance $",
         size: 120,
+        meta: { align: "right" },
         cell: ({ getValue }) => {
           const val = getValue() as number;
           return (
@@ -250,18 +258,21 @@ export default function OpenPositionsPage() {
         accessorKey: "debitZar",
         header: "Debit ZAR",
         size: 120,
+        meta: { align: "right" },
         cell: ({ getValue }) => numCell(getValue() as number),
       },
       {
         accessorKey: "creditZar",
         header: "Credit ZAR",
         size: 120,
+        meta: { align: "right" },
         cell: ({ getValue }) => numCell(getValue() as number),
       },
       {
         accessorKey: "balanceZar",
         header: "Balance ZAR",
         size: 130,
+        meta: { align: "right" },
         cell: ({ getValue }) => {
           const val = getValue() as number;
           return (

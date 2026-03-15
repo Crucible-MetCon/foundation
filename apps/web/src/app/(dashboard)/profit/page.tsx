@@ -151,6 +151,7 @@ export default function ProfitPage() {
         accessorKey: "clientWeightG",
         header: "Weight (g)",
         size: 100,
+        meta: { align: "right" },
         cell: ({ getValue }) => (
           <span className="tabular-nums">{fmt(getValue() as number, 2)}</span>
         ),
@@ -159,6 +160,7 @@ export default function ProfitPage() {
         accessorKey: "matchedOz",
         header: "Matched (oz)",
         size: 110,
+        meta: { align: "right" },
         cell: ({ getValue }) => (
           <span className="tabular-nums">{fmt(getValue() as number, 4)}</span>
         ),
@@ -167,18 +169,21 @@ export default function ProfitPage() {
         accessorKey: "metalProfitZar",
         header: "Metal Profit",
         size: 120,
+        meta: { align: "right" },
         cell: ({ getValue }) => numCell(getValue() as number, 2),
       },
       {
         accessorKey: "exchangeProfitZar",
         header: "Exchange Profit",
         size: 130,
+        meta: { align: "right" },
         cell: ({ getValue }) => numCell(getValue() as number, 2),
       },
       {
         accessorKey: "totalProfitZar",
         header: "Total Profit",
         size: 120,
+        meta: { align: "right" },
         cell: ({ getValue }) => {
           const val = getValue() as number;
           return (
@@ -192,6 +197,7 @@ export default function ProfitPage() {
         accessorKey: "profitPct",
         header: "Margin %",
         size: 90,
+        meta: { align: "right" },
         cell: ({ getValue }) => {
           const val = getValue() as number;
           return (
@@ -205,6 +211,7 @@ export default function ProfitPage() {
         accessorKey: "pmxWaGoldUsdOz",
         header: "PMX Gold WA",
         size: 120,
+        meta: { align: "right" },
         cell: ({ getValue }) => (
           <span className="tabular-nums">{fmt(getValue() as number, 2)}</span>
         ),
@@ -213,6 +220,7 @@ export default function ProfitPage() {
         accessorKey: "pmxWaUsdzar",
         header: "PMX FX WA",
         size: 110,
+        meta: { align: "right" },
         cell: ({ getValue }) => (
           <span className="tabular-nums">{fmt(getValue() as number, 4)}</span>
         ),
@@ -221,6 +229,7 @@ export default function ProfitPage() {
         accessorKey: "trademcWaGoldUsdOz",
         header: "TradeMC Gold WA",
         size: 140,
+        meta: { align: "right" },
         cell: ({ getValue }) => (
           <span className="tabular-nums">{fmt(getValue() as number, 2)}</span>
         ),
@@ -229,6 +238,7 @@ export default function ProfitPage() {
         accessorKey: "trademcWaUsdzar",
         header: "TradeMC FX WA",
         size: 120,
+        meta: { align: "right" },
         cell: ({ getValue }) => (
           <span className="tabular-nums">{fmt(getValue() as number, 4)}</span>
         ),

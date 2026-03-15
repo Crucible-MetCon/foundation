@@ -173,12 +173,14 @@ export default function SuppliersPage() {
         accessorKey: "trade_limit",
         header: "Trade Limit",
         size: 120,
+        meta: { align: "right" },
         cell: ({ getValue }) => numCell(getValue() as string),
       },
       {
         accessorKey: "refining_rate",
         header: "Refining Rate",
         size: 120,
+        meta: { align: "right" },
         cell: ({ getValue }) => numCell(getValue() as string, 4),
       },
       {

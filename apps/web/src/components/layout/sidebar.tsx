@@ -25,6 +25,7 @@ import {
   AlertCircle,
   Loader2,
   LineChart,
+  TableProperties,
 } from "lucide-react";
 
 interface SidebarProps {
@@ -101,6 +102,7 @@ const navSections = [
     label: "Tools",
     items: [
       { href: "/trading-ticket", label: "Trading Ticket", icon: FileText },
+      { href: "/trading-summary", label: "Trading Summary", icon: TableProperties },
       { href: "/reconciliation", label: "Reconciliation", icon: Wallet },
       { href: "/export-trades", label: "Export Trades", icon: Download },
     ],

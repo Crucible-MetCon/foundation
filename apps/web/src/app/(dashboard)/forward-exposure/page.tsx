@@ -152,6 +152,7 @@ export default function ForwardExposurePage() {
         accessorKey: "daysFromSpot",
         header: "Days Fwd",
         size: 80,
+        meta: { align: "right" },
         cell: ({ getValue }) => (
           <span className="tabular-nums">{getValue() as number}</span>
         ),
@@ -160,6 +161,7 @@ export default function ForwardExposurePage() {
         accessorKey: "tradeCount",
         header: "Trades",
         size: 70,
+        meta: { align: "right" },
         cell: ({ getValue }) => (
           <span className="tabular-nums">{getValue() as number}</span>
         ),
@@ -168,6 +170,7 @@ export default function ForwardExposurePage() {
         accessorKey: "tradeNumbers",
         header: "Trade #s",
         size: 80,
+        meta: { align: "right" },
         cell: ({ getValue }) => (
           <span className="tabular-nums">{getValue() as number}</span>
         ),
@@ -176,18 +179,21 @@ export default function ForwardExposurePage() {
         accessorKey: "usdNet",
         header: "USD Net",
         size: 130,
+        meta: { align: "right" },
         cell: ({ getValue }) => numCell(getValue() as number),
       },
       {
         accessorKey: "goldNetOz",
         header: "Gold Net (oz)",
         size: 130,
+        meta: { align: "right" },
         cell: ({ getValue }) => numCell(getValue() as number, 4),
       },
       {
         accessorKey: "zarFlow",
         header: "ZAR Flow",
         size: 130,
+        meta: { align: "right" },
         cell: ({ getValue }) => numCell(getValue() as number),
       },
     ],
@@ -257,36 +263,42 @@ export default function ForwardExposurePage() {
         accessorKey: "quantity",
         header: "Quantity",
         size: 110,
+        meta: { align: "right" },
         cell: ({ getValue }) => numCell(getValue() as number, 4),
       },
       {
         accessorKey: "price",
         header: "Price",
         size: 110,
+        meta: { align: "right" },
         cell: ({ getValue }) => numCell(getValue() as number, 4),
       },
       {
         accessorKey: "usdNet",
         header: "USD Net",
         size: 130,
+        meta: { align: "right" },
         cell: ({ getValue }) => numCell(getValue() as number),
       },
       {
         accessorKey: "goldNetOz",
         header: "Gold (oz)",
         size: 120,
+        meta: { align: "right" },
         cell: ({ getValue }) => numCell(getValue() as number, 4),
       },
       {
         accessorKey: "zarFlow",
         header: "ZAR Flow",
         size: 130,
+        meta: { align: "right" },
         cell: ({ getValue }) => numCell(getValue() as number),
       },
       {
         accessorKey: "daysFromSpot",
         header: "Days Fwd",
         size: 80,
+        meta: { align: "right" },
         cell: ({ getValue }) => (
           <span className="tabular-nums">{getValue() as number}</span>
         ),

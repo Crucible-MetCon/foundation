@@ -265,12 +265,14 @@ export default function TradeMCPage() {
         accessorKey: "weight",
         header: "Weight (g)",
         size: 100,
+        meta: { align: "right" },
         cell: ({ getValue }) => numCell(getValue() as string, 2),
       },
       {
         id: "weight_oz",
         header: "Weight (oz)",
         size: 100,
+        meta: { align: "right" },
         accessorFn: (row) => {
           const g = parseFloat(row.weight);
           return isNaN(g) ? null : g / GRAMS_PER_TROY_OUNCE;
@@ -281,6 +283,7 @@ export default function TradeMCPage() {
         id: "zar_oz",
         header: "ZAR/oz",
         size: 110,
+        meta: { align: "right" },
         accessorFn: (row) =>
           row.zar_per_troy_ounce_confirmed ?? row.zar_per_troy_ounce,
         cell: ({ getValue }) => numCell(getValue() as string, 2),
@@ -289,6 +292,7 @@ export default function TradeMCPage() {
         id: "zar_usd",
         header: "ZAR/USD",
         size: 100,
+        meta: { align: "right" },
         accessorFn: (row) => row.zar_to_usd_confirmed ?? row.zar_to_usd,
         cell: ({ getValue }) => numCell(getValue() as string, 6),
       },
@@ -296,12 +300,14 @@ export default function TradeMCPage() {
         accessorKey: "usd_per_troy_ounce_confirmed",
         header: "USD/oz",
         size: 100,
+        meta: { align: "right" },
         cell: ({ getValue }) => numCell(getValue() as string, 2),
       },
       {
         accessorKey: "requested_zar_per_gram",
         header: "ZAR/g Req",
         size: 100,
+        meta: { align: "right" },
         cell: ({ getValue }) => numCell(getValue() as string, 2),
       },
       {

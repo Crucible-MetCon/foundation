@@ -197,12 +197,14 @@ export default function WeightTransactionsPage() {
         accessorKey: "weight",
         header: "Weight (g)",
         size: 110,
+        meta: { align: "right" },
         cell: ({ getValue }) => numCell(getValue() as string, 2),
       },
       {
         accessorKey: "gold_percentage",
         header: "Gold %",
         size: 80,
+        meta: { align: "right" },
         cell: ({ getValue }) => {
           const val = getValue() as string | null;
           if (val == null || val === "") return <span className="num-neutral">-</span>;
@@ -222,6 +224,7 @@ export default function WeightTransactionsPage() {
         accessorKey: "rolling_balance",
         header: "Rolling Balance",
         size: 130,
+        meta: { align: "right" },
         cell: ({ getValue }) => {
           const val = getValue() as string;
           if (val == null || val === "") return <span className="num-neutral">-</span>;

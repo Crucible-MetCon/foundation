@@ -92,6 +92,8 @@ interface DataTableProps<TData> {
   enableSorting?: boolean;
   /** Initial column visibility state */
   initialColumnVisibility?: VisibilityState;
+  /** Footer content rendered as <tfoot> inside the same table (for aligned totals rows) */
+  footer?: ReactNode;
 }
 
 export function DataTable<TData>({
@@ -113,6 +115,7 @@ export function DataTable<TData>({
   maxHeight,
   enableSorting: enableSortingProp = true,
   initialColumnVisibility,
+  footer,
 }: DataTableProps<TData>) {
   const [sorting, setSorting] = useState<SortingState>(initialSorting);
   const [columnFilters, setColumnFilters] = useState<ColumnFiltersState>([]);
@@ -268,6 +271,11 @@ export function DataTable<TData>({
               ))
             )}
           </tbody>
+          {footer && (
+            <tfoot className="border-t border-[var(--color-border)] bg-[var(--color-background)]">
+              {footer}
+            </tfoot>
+          )}
         </table>
       </div>
 

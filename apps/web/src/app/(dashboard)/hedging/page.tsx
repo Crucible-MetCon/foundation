@@ -132,36 +132,42 @@ export default function HedgingPage() {
         accessorKey: "tmWeightG",
         header: "TradeMC Weight (g)",
         size: 130,
+        meta: { align: "right" },
         cell: ({ getValue }) => fmt(getValue() as number, 2),
       },
       {
         accessorKey: "tmWeightOz",
         header: "TradeMC Weight (oz)",
         size: 140,
+        meta: { align: "right" },
         cell: ({ getValue }) => fmt(getValue() as number, 4),
       },
       {
         accessorKey: "stonexBuyOz",
         header: "StoneX Buy (oz)",
         size: 120,
+        meta: { align: "right" },
         cell: ({ getValue }) => fmt(getValue() as number, 4),
       },
       {
         accessorKey: "stonexSellOz",
         header: "StoneX Sell (oz)",
         size: 120,
+        meta: { align: "right" },
         cell: ({ getValue }) => fmt(getValue() as number, 4),
       },
       {
         accessorKey: "stonexNetOz",
         header: "StoneX Net (oz)",
         size: 120,
+        meta: { align: "right" },
         cell: ({ getValue }) => numCell(getValue() as number, 4),
       },
       {
         accessorKey: "hedgeNeedG",
         header: "Metal Gap (g)",
         size: 110,
+        meta: { align: "right" },
         cell: ({ getValue }) => {
           const val = getValue() as number;
           if (val == null || val === 0)
@@ -185,6 +191,7 @@ export default function HedgingPage() {
         accessorKey: "pmxNetUsd",
         header: "USD Position",
         size: 120,
+        meta: { align: "right" },
         cell: ({ getValue }) => numCell(getValue() as number, 2),
       },
       {
