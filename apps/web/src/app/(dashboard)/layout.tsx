@@ -26,6 +26,7 @@ export default async function DashboardLayout({
       <div className="flex flex-1 flex-col overflow-hidden">
         <Header
           user={{
+            id: user.id,
             displayName: user.displayName ?? user.username,
             role: user.role,
           }}

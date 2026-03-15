@@ -7,6 +7,7 @@ import { LogOut, Settings } from "lucide-react";
 
 interface HeaderProps {
   user: {
+    id: number;
     displayName: string;
     role: string;
   };
@@ -43,6 +44,19 @@ export function Header({ user }: HeaderProps) {
     refetchInterval: 60_000,
     staleTime: 30_000,
   });
+
+  const { data: taskData } = useQuery<{ count: number }>({
+    queryKey: ["my-tasks-count"],
+    queryFn: async () => {
+      const resp = await fetch("/api/my-tasks");
+      if (!resp.ok) return { count: 0 };
+      return resp.json();
+    },
+    refetchInterval: 60_000,
+    staleTime: 30_000,
+  });
+
+  const taskCount = taskData?.count ?? 0;
 
   async function handleLogout() {
     await fetch("/api/auth/logout", { method: "POST" });
@@ -98,13 +112,22 @@ export function Header({ user }: HeaderProps) {
 
       {/* User controls */}
       <div className="flex items-center gap-4">
-        <div className="text-right">
+        <div className="relative text-right">
           <p className="text-sm font-medium text-[var(--color-text-primary)]">
             {user.displayName}
           </p>
           <p className="text-xs capitalize text-[var(--color-text-muted)]">
             {user.role}
           </p>
+          {taskCount > 0 && (
+            <Link
+              href="/admin/tasks"
+              className="absolute -top-1.5 -right-3 flex h-5 min-w-5 items-center justify-center rounded-full bg-red-500 px-1 text-[10px] font-bold text-white shadow-sm hover:bg-red-600 transition-colors"
+              title={`${taskCount} active task${taskCount === 1 ? "" : "s"} assigned to you`}
+            >
+              {taskCount}
+            </Link>
+          )}
         </div>
         <Link
           href="/settings"
